@@ -31,7 +31,7 @@ class ApiBaseController extends ResourceController
             return null;
         }
 
-        $secret = getenv('JWT_SECRET') ?: 'lifeknob_secret_key_change_in_production';
+        $secret = env('JWT_SECRET', getenv('JWT_SECRET') ?: 'lifeknob_secret_key_change_in_production');
         $expectedSignature = hash_hmac('sha256', "$parts[0].$parts[1]", $secret);
         if (!hash_equals($expectedSignature, $parts[2])) {
             return null;

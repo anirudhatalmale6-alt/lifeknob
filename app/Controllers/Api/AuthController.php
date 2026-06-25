@@ -153,7 +153,7 @@ class AuthController extends ApiBaseController
             'expires_at' => time() + (86400 * 30),
         ];
 
-        $secret = getenv('JWT_SECRET') ?: 'lifeknob_secret_key_change_in_production';
+        $secret = env('JWT_SECRET', getenv('JWT_SECRET') ?: 'lifeknob_secret_key_change_in_production');
         $header = base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'HS256']));
         $payload = base64_encode(json_encode($payload));
         $signature = hash_hmac('sha256', "$header.$payload", $secret);
