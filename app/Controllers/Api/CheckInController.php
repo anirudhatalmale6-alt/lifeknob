@@ -5,6 +5,7 @@ namespace App\Controllers\Api;
 use CodeIgniter\RESTful\ResourceController;
 use App\Models\CheckInModel;
 use App\Models\AlertModel;
+use App\Models\ConnectionModel;
 use App\Models\FamilyMemberModel;
 use App\Models\UserModel;
 use App\Services\NotificationService;
@@ -121,16 +122,63 @@ class CheckInController extends ResourceController
         ]);
     }
 
+    /**
+     * GET /api/checkin/connections
+     * Show latest check-in for each person connected to the requesting user.
+     * Connections are mutual: shows both people I connected to AND people who connected to me.
+     */
+    public function latestForConnections()
+    {
+        $userId = $this->request->getGet('user_id');
+
+        if (!$userId) {
+            return $this->failValidationErrors('user_id required');
+        }
+
+        $connectionModel = new ConnectionModel();
+        $checkInModel = new CheckInModel();
+        $userModel = new UserModel();
+
+        // Get all mutually connected user IDs
+        $connectedIds = $connectionModel->getAllConnectedUserIds($userId);
+
+        $result = [];
+        foreach ($connectedIds as $connUserId) {
+            $connUser = $userModel->find($connUserId);
+            if (!$connUser) continue;
+
+            $latest = $checkInModel->getLatestCheckIn($connUserId);
+            $result[] = [
+                'user_id'        => $connUser->id,
+                'name'           => $connUser->name,
+                'user_code'      => $connUser->user_code,
+                'latest_checkin' => $latest ? [
+                    'type'       => $latest->type,
+                    'created_at' => $latest->created_at,
+                    'note'       => $latest->note ?? null,
+                ] : null,
+                'is_overdue'     => $this->isOverdue($connUserId, $latest),
+            ];
+        }
+
+        return $this->respond([
+            'status' => 'success',
+            'data'   => $result,
+        ]);
+    }
+
     private function notifyFamilyOk(int $elderId): void
     {
         $userModel = new UserModel();
         $elder = $userModel->find($elderId);
         if (!$elder) return;
 
-        $familyMemberModel = new FamilyMemberModel();
         $notificationService = new NotificationService();
 
+        // Notify via legacy family groups (backward compat)
+        $familyMemberModel = new FamilyMemberModel();
         $groups = model('FamilyGroupModel')->getGroupsForUser($elderId);
+        $notifiedUserIds = [];
         foreach ($groups as $group) {
             $familyMembers = $familyMemberModel->getFamilyInGroup($group->id);
             foreach ($familyMembers as $member) {
@@ -141,7 +189,22 @@ class CheckInController extends ResourceController
                     $elder->name . ' pressed "I\'m OK" just now.',
                     ['type' => 'ok_checkin', 'elder_id' => $elderId]
                 );
+                $notifiedUserIds[] = (int) $member->user_id;
             }
+        }
+
+        // Notify via connections (avoid double-notifying)
+        $connectionModel = new ConnectionModel();
+        $connectedUserIds = $connectionModel->getAllConnectedUserIds($elderId);
+        foreach ($connectedUserIds as $connUserId) {
+            if (in_array($connUserId, $notifiedUserIds)) continue;
+            $notificationService->send(
+                $connUserId,
+                'info',
+                $elder->name . ' checked in',
+                $elder->name . ' pressed "I\'m OK" just now.',
+                ['type' => 'ok_checkin', 'elder_id' => $elderId]
+            );
         }
     }
 
@@ -154,7 +217,10 @@ class CheckInController extends ResourceController
         $alertModel = new AlertModel();
         $familyMemberModel = new FamilyMemberModel();
         $notificationService = new NotificationService();
+        $priority = $type === 'emergency' ? 'EMERGENCY' : 'URGENT';
 
+        // Legacy family group alerts (backward compat)
+        $notifiedUserIds = [];
         $groups = model('FamilyGroupModel')->getGroupsForUser($elderId);
         foreach ($groups as $group) {
             $alertModel->insert([
@@ -167,7 +233,6 @@ class CheckInController extends ResourceController
 
             $familyMembers = $familyMemberModel->getFamilyInGroup($group->id);
             foreach ($familyMembers as $member) {
-                $priority = $type === 'emergency' ? 'EMERGENCY' : 'URGENT';
                 $notificationService->send(
                     $member->user_id,
                     'alert',
@@ -175,7 +240,22 @@ class CheckInController extends ResourceController
                     $elder->name . ' ' . $messageSuffix,
                     ['type' => $type, 'elder_id' => $elderId, 'group_id' => $group->id]
                 );
+                $notifiedUserIds[] = (int) $member->user_id;
             }
+        }
+
+        // Connection-based alerts (avoid double-notifying)
+        $connectionModel = new ConnectionModel();
+        $connectedUserIds = $connectionModel->getAllConnectedUserIds($elderId);
+        foreach ($connectedUserIds as $connUserId) {
+            if (in_array($connUserId, $notifiedUserIds)) continue;
+            $notificationService->send(
+                $connUserId,
+                'alert',
+                "[$priority] " . $elder->name,
+                $elder->name . ' ' . $messageSuffix,
+                ['type' => $type, 'elder_id' => $elderId]
+            );
         }
     }
 

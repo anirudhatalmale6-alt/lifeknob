@@ -28,12 +28,13 @@ class AuthController extends ResourceController
         $userModel = new UserModel();
 
         $userData = [
-            'email'    => $this->request->getPost('email'),
-            'password' => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
-            'name'     => $this->request->getPost('name'),
-            'role'     => $this->request->getPost('role'),
-            'phone'    => $this->request->getPost('phone') ?? null,
-            'timezone' => $this->request->getPost('timezone') ?? 'UTC',
+            'email'     => $this->request->getPost('email'),
+            'password'  => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
+            'name'      => $this->request->getPost('name'),
+            'role'      => $this->request->getPost('role'),
+            'phone'     => $this->request->getPost('phone') ?? null,
+            'timezone'  => $this->request->getPost('timezone') ?? 'UTC',
+            'user_code' => $userModel->generateUserCode(),
         ];
 
         $userId = $userModel->insert($userData);
@@ -58,9 +59,10 @@ class AuthController extends ResourceController
             'status'  => 'success',
             'message' => 'Registration successful',
             'data'    => [
-                'user_id' => $userId,
-                'token'   => $token,
-                'role'    => $userData['role'],
+                'user_id'   => $userId,
+                'token'     => $token,
+                'role'      => $userData['role'],
+                'user_code' => $userData['user_code'],
             ],
         ]);
     }
@@ -99,11 +101,13 @@ class AuthController extends ResourceController
             'status'  => 'success',
             'message' => 'Login successful',
             'data'    => [
-                'user_id' => $user->id,
-                'token'   => $token,
-                'name'    => $user->name,
-                'email'   => $user->email,
-                'role'    => $user->role,
+                'user_id'   => $user->id,
+                'token'     => $token,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'role'      => $user->role,
+                'user_code' => $user->user_code,
+                'plan'      => $user->plan ?? 'free',
             ],
         ]);
     }

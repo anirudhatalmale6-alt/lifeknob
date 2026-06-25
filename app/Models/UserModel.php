@@ -27,6 +27,9 @@ class UserModel extends Model
         'timezone',
         'is_active',
         'last_seen_at',
+        'user_code',
+        'plan',
+        'last_code_change',
     ];
 
     protected $validationRules = [
@@ -95,5 +98,30 @@ class UserModel extends Model
     public function updateLastSeen(int $userId): bool
     {
         return $this->update($userId, ['last_seen_at' => date('Y-m-d H:i:s')]);
+    }
+
+    /**
+     * Find a user by their unique connection code.
+     */
+    public function findByCode(string $code): ?object
+    {
+        return $this->where('user_code', $code)->first();
+    }
+
+    /**
+     * Generate a unique 8-character uppercase alphanumeric user code.
+     */
+    public function generateUserCode(): string
+    {
+        $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        do {
+            $code = '';
+            for ($i = 0; $i < 8; $i++) {
+                $code .= $characters[random_int(0, strlen($characters) - 1)];
+            }
+        } while ($this->where('user_code', $code)->countAllResults() > 0);
+
+        return $code;
     }
 }

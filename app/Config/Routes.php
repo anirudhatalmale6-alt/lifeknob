@@ -19,6 +19,7 @@ $routes->group('api', function ($routes) {
     $routes->get('checkin/history', 'Api\CheckInController::history');
     $routes->get('checkin/stats', 'Api\CheckInController::stats');
     $routes->get('checkin/latest', 'Api\CheckInController::latestForGroup');
+    $routes->get('checkin/connections', 'Api\CheckInController::latestForConnections');
 
     // Family groups
     $routes->post('family/create', 'Api\FamilyController::createGroup');
@@ -26,6 +27,13 @@ $routes->group('api', function ($routes) {
     $routes->get('family/groups', 'Api\FamilyController::getGroups');
     $routes->get('family/members', 'Api\FamilyController::getMembers');
     $routes->post('family/leave', 'Api\FamilyController::leaveGroup');
+
+    // Connections (1-to-1 code-based)
+    $routes->post('connection/connect', 'Api\ConnectionController::connect');
+    $routes->post('connection/disconnect', 'Api\ConnectionController::disconnect');
+    $routes->get('connection/mine', 'Api\ConnectionController::myConnections');
+    $routes->get('connection/watchers', 'Api\ConnectionController::connectedToMe');
+    $routes->get('connection/info', 'Api\ConnectionController::info');
 
     // Alerts & notifications
     $routes->get('alerts', 'Api\AlertController::getAlerts');
