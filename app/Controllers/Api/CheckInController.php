@@ -63,8 +63,19 @@ class CheckInController extends ApiBaseController
             return $this->failValidationErrors('Authentication required');
         }
 
-        $checkInModel = new CheckInModel();
-        $history = $checkInModel->getCheckInHistory($userId, $limit);
+        $connectionModel = new ConnectionModel();
+        $connectedIds = $connectionModel->getAllConnectedUserIds($userId);
+        $allUserIds = array_merge([$userId], $connectedIds);
+
+        $db = \Config\Database::connect();
+        $history = $db->table('check_ins')
+            ->select('check_ins.*, users.name as user_name')
+            ->join('users', 'users.id = check_ins.user_id', 'left')
+            ->whereIn('check_ins.user_id', $allUserIds)
+            ->orderBy('check_ins.created_at', 'DESC')
+            ->limit($limit)
+            ->get()
+            ->getResultArray();
 
         return $this->respond([
             'status' => 'success',
