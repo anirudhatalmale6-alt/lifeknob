@@ -64,21 +64,25 @@ class ApiBaseController extends ResourceController
 
     protected function input(?string $key = null)
     {
-        $contentType = $this->request->getHeaderLine('Content-Type');
-
-        if (strpos($contentType, 'application/json') !== false) {
-            $json = $this->request->getJSON(true);
-            if ($key === null) return $json;
-            return $json[$key] ?? null;
-        }
-
         if ($key === null) {
+            $contentType = $this->request->getHeaderLine('Content-Type');
+            if (strpos($contentType, 'application/json') !== false) {
+                return $this->request->getJSON(true) ?? [];
+            }
             return array_merge(
                 $this->request->getGet() ?? [],
                 $this->request->getPost() ?? []
             );
         }
 
-        return $this->request->getPost($key) ?? $this->request->getGet($key);
+        $value = $this->request->getVar($key);
+        if ($value !== null) return $value;
+
+        $json = $this->request->getJSON(true);
+        if (is_array($json) && isset($json[$key])) {
+            return $json[$key];
+        }
+
+        return null;
     }
 }
