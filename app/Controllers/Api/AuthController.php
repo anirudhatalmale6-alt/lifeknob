@@ -2,38 +2,47 @@
 
 namespace App\Controllers\Api;
 
-use CodeIgniter\RESTful\ResourceController;
 use App\Models\UserModel;
 use App\Models\CheckInSettingModel;
 
-class AuthController extends ResourceController
+class AuthController extends ApiBaseController
 {
-    protected $format = 'json';
-
     public function register()
     {
-        $rules = [
-            'email'    => 'required|valid_email|is_unique[users.email]',
-            'password' => 'required|min_length[6]',
-            'name'     => 'required|min_length[2]|max_length[100]',
-            'phone'    => 'permit_empty|max_length[20]',
-            'timezone' => 'permit_empty|max_length[50]',
-        ];
+        $email    = $this->input('email');
+        $password = $this->input('password');
+        $name     = $this->input('name');
+        $phone    = $this->input('phone');
+        $timezone = $this->input('timezone') ?? 'UTC';
 
-        if (!$this->validate($rules)) {
-            return $this->failValidationErrors($this->validator->getErrors());
+        if (empty($email) || empty($password) || empty($name)) {
+            return $this->failValidationErrors('name, email, and password are required');
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->failValidationErrors('Invalid email address');
+        }
+
+        if (strlen($password) < 6) {
+            return $this->failValidationErrors('Password must be at least 6 characters');
         }
 
         $userModel = new UserModel();
 
+        if ($userModel->where('email', $email)->first()) {
+            return $this->fail('This email address is already registered.', 409);
+        }
+
+        $userCode = $userModel->generateUserCode();
+
         $userData = [
-            'email'     => $this->request->getPost('email'),
-            'password'  => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
-            'name'      => $this->request->getPost('name'),
+            'email'     => $email,
+            'password'  => password_hash($password, PASSWORD_DEFAULT),
+            'name'      => $name,
             'role'      => 'elder',
-            'phone'     => $this->request->getPost('phone') ?? null,
-            'timezone'  => $this->request->getPost('timezone') ?? 'UTC',
-            'user_code' => $userModel->generateUserCode(),
+            'phone'     => $phone,
+            'timezone'  => $timezone,
+            'user_code' => $userCode,
         ];
 
         $userId = $userModel->insert($userData);
@@ -51,18 +60,17 @@ class AuthController extends ResourceController
         ]);
 
         $token = $this->generateToken($userId);
-        $user = $userModel->find($userId);
 
         return $this->respondCreated([
             'status'  => 'success',
             'message' => 'Registration successful',
             'token'   => $token,
             'user'    => [
-                'id'        => (int)$userId,
-                'name'      => $userData['name'],
-                'email'     => $userData['email'],
-                'phone'     => $userData['phone'] ?? '',
-                'user_code' => $userData['user_code'],
+                'id'        => (int) $userId,
+                'name'      => $name,
+                'email'     => $email,
+                'phone'     => $phone ?? '',
+                'user_code' => $userCode,
                 'plan'      => 'free',
                 'max_connections'  => 1,
                 'used_connections' => 0,
@@ -72,19 +80,17 @@ class AuthController extends ResourceController
 
     public function login()
     {
-        $rules = [
-            'email'    => 'required|valid_email',
-            'password' => 'required',
-        ];
+        $email    = $this->input('email');
+        $password = $this->input('password');
 
-        if (!$this->validate($rules)) {
-            return $this->failValidationErrors($this->validator->getErrors());
+        if (empty($email) || empty($password)) {
+            return $this->failValidationErrors('email and password are required');
         }
 
         $userModel = new UserModel();
-        $user = $userModel->findByEmail($this->request->getPost('email'));
+        $user = $userModel->findByEmail($email);
 
-        if (!$user || !password_verify($this->request->getPost('password'), $user->password)) {
+        if (!$user || !password_verify($password, $user->password)) {
             return $this->failUnauthorized('Invalid email or password');
         }
 
@@ -95,7 +101,7 @@ class AuthController extends ResourceController
         $token = $this->generateToken($user->id);
         $userModel->updateLastSeen($user->id);
 
-        $firebaseToken = $this->request->getPost('firebase_token');
+        $firebaseToken = $this->input('firebase_token');
         if ($firebaseToken) {
             $userModel->updateFirebaseToken($user->id, $firebaseToken);
         }
@@ -112,7 +118,7 @@ class AuthController extends ResourceController
             'message' => 'Login successful',
             'token'   => $token,
             'user'    => [
-                'id'        => (int)$user->id,
+                'id'        => (int) $user->id,
                 'name'      => $user->name,
                 'email'     => $user->email,
                 'phone'     => $user->phone ?? '',
@@ -126,11 +132,11 @@ class AuthController extends ResourceController
 
     public function updateFirebaseToken()
     {
-        $userId = $this->request->getPost('user_id');
-        $token  = $this->request->getPost('firebase_token');
+        $userId = $this->getUserId();
+        $token  = $this->input('firebase_token');
 
         if (!$userId || !$token) {
-            return $this->failValidationErrors('user_id and firebase_token required');
+            return $this->failValidationErrors('firebase_token required');
         }
 
         $userModel = new UserModel();

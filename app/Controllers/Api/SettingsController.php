@@ -40,20 +40,19 @@ class SettingsController extends ApiBaseController
         $fields = ['frequency_hours', 'reminder_minutes', 'alert_delay_minutes', 'quiet_hours_start', 'quiet_hours_end', 'is_active'];
 
         foreach ($fields as $field) {
-            $value = $this->request->getPost($field);
+            $value = $this->input($field);
             if ($value !== null) {
                 $data[$field] = $value;
             }
         }
 
-        // Also handle SOS number and quiet hours toggle on the user record
         $userModel = new UserModel();
         $userUpdates = [];
-        $sosNumber = $this->request->getPost('sos_number');
+        $sosNumber = $this->input('sos_number');
         if ($sosNumber !== null) {
             $userUpdates['sos_number'] = $sosNumber;
         }
-        $quietHoursEnabled = $this->request->getPost('quiet_hours_enabled');
+        $quietHoursEnabled = $this->input('quiet_hours_enabled');
         if ($quietHoursEnabled !== null) {
             $userUpdates['quiet_hours_enabled'] = $quietHoursEnabled ? 1 : 0;
         }
@@ -129,7 +128,7 @@ class SettingsController extends ApiBaseController
         $fields = ['name', 'phone', 'timezone'];
 
         foreach ($fields as $field) {
-            $value = $this->request->getPost($field);
+            $value = $this->input($field);
             if ($value !== null) {
                 $data[$field] = $value;
             }

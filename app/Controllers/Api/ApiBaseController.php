@@ -59,6 +59,26 @@ class ApiBaseController extends ResourceController
 
     protected function getUserId(): int
     {
-        return $this->userId ?? (int) ($this->request->getPost('user_id') ?? $this->request->getGet('user_id') ?? 0);
+        return $this->userId ?? (int) ($this->input('user_id') ?? 0);
+    }
+
+    protected function input(?string $key = null)
+    {
+        $contentType = $this->request->getHeaderLine('Content-Type');
+
+        if (strpos($contentType, 'application/json') !== false) {
+            $json = $this->request->getJSON(true);
+            if ($key === null) return $json;
+            return $json[$key] ?? null;
+        }
+
+        if ($key === null) {
+            return array_merge(
+                $this->request->getGet() ?? [],
+                $this->request->getPost() ?? []
+            );
+        }
+
+        return $this->request->getPost($key) ?? $this->request->getGet($key);
     }
 }

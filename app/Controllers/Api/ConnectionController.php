@@ -11,7 +11,7 @@ class ConnectionController extends ApiBaseController
     public function connect()
     {
         $userId = $this->getUserId();
-        $code   = $this->request->getPost('code');
+        $code   = $this->input('code');
 
         if (!$userId || !$code) {
             return $this->failValidationErrors('code is required');
@@ -71,7 +71,7 @@ class ConnectionController extends ApiBaseController
     public function disconnect()
     {
         $userId      = $this->getUserId();
-        $connectedTo = $this->request->getPost('connected_to') ?? $this->request->getPost('connection_id');
+        $connectedTo = $this->input('connected_to') ?? $this->input('connection_id');
 
         if (!$userId || !$connectedTo) {
             return $this->failValidationErrors('connected_to is required');

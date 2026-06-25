@@ -14,23 +14,20 @@ class CheckInController extends ApiBaseController
     public function create()
     {
         $userId = $this->getUserId();
-        $type   = $this->request->getPost('type');
+        $type   = $this->input('type');
 
         if (!$userId || !in_array($type, ['ok', 'help', 'emergency'])) {
             return $this->failValidationErrors('Valid type (ok/help/emergency) required');
         }
-
-        $authCheck = $this->requireAuth();
-        if ($authCheck && !$this->request->getPost('user_id')) return $authCheck;
 
         $checkInModel = new CheckInModel();
 
         $data = [
             'user_id'    => $userId,
             'type'       => $type,
-            'latitude'   => $this->request->getPost('latitude'),
-            'longitude'  => $this->request->getPost('longitude'),
-            'note'       => $this->request->getPost('note'),
+            'latitude'   => $this->input('latitude'),
+            'longitude'  => $this->input('longitude'),
+            'note'       => $this->input('note'),
             'created_at' => date('Y-m-d H:i:s'),
         ];
 
