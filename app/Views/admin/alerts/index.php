@@ -158,7 +158,7 @@
             <small class="text-muted">
                 Showing <?= count($alerts) ?> alert<?= count($alerts) !== 1 ? 's' : '' ?>
             </small>
-            <?= $pager->links('default', 'bootstrap_5') ?>
+            <?= $pager->links('default', 'default_full') ?>
         </div>
     <?php endif; ?>
 </div>

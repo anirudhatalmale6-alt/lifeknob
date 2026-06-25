@@ -21,13 +21,14 @@ class DashboardController extends BaseController
         $alertModel   = new AlertModel();
         $groupModel   = new FamilyGroupModel();
 
+        $db = \Config\Database::connect();
         $stats = [
-            'total_users'    => $userModel->where('role !=', 'admin')->countAllResults(false),
-            'active_elders'  => $userModel->where('role', 'elder')->where('is_active', 1)->countAllResults(false),
-            'family_members' => $userModel->where('role', 'family')->countAllResults(false),
-            'active_alerts'  => $alertModel->where('is_resolved', 0)->countAllResults(false),
-            'total_groups'   => $groupModel->countAllResults(false),
-            'checkins_today' => $checkInModel->where('created_at >=', date('Y-m-d 00:00:00'))->countAllResults(false),
+            'total_users'    => $db->table('users')->where('role !=', 'admin')->where('deleted_at IS NULL')->countAllResults(),
+            'active_elders'  => $db->table('users')->where('role', 'elder')->where('is_active', 1)->where('deleted_at IS NULL')->countAllResults(),
+            'family_members' => $db->table('users')->where('role', 'family')->where('deleted_at IS NULL')->countAllResults(),
+            'active_alerts'  => $db->table('alerts')->where('is_resolved', 0)->countAllResults(),
+            'total_groups'   => $db->table('family_groups')->countAllResults(),
+            'checkins_today' => $db->table('check_ins')->where('check_ins.created_at >=', date('Y-m-d 00:00:00'))->countAllResults(),
         ];
 
         $recentAlerts = $alertModel

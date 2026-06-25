@@ -132,7 +132,7 @@
             <small class="text-muted">
                 Showing <?= count($checkIns) ?> check-in<?= count($checkIns) !== 1 ? 's' : '' ?>
             </small>
-            <?= $pager->links('default', 'bootstrap_5') ?>
+            <?= $pager->links('default', 'default_full') ?>
         </div>
     <?php endif; ?>
 </div>
