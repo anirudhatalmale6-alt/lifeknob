@@ -2,20 +2,18 @@
 
 namespace App\Controllers\Api;
 
-use CodeIgniter\RESTful\ResourceController;
 use App\Models\CheckInSettingModel;
 use App\Models\UserModel;
+use App\Models\ConnectionModel;
 
-class SettingsController extends ResourceController
+class SettingsController extends ApiBaseController
 {
-    protected $format = 'json';
-
     public function getSettings()
     {
-        $userId = $this->request->getGet('user_id');
+        $userId = $this->getUserId();
 
         if (!$userId) {
-            return $this->failValidationErrors('user_id required');
+            return $this->failValidationErrors('Authentication required');
         }
 
         $settingModel = new CheckInSettingModel();
@@ -29,10 +27,10 @@ class SettingsController extends ResourceController
 
     public function updateSettings()
     {
-        $userId = $this->request->getPost('user_id');
+        $userId = $this->getUserId();
 
         if (!$userId) {
-            return $this->failValidationErrors('user_id required');
+            return $this->failValidationErrors('Authentication required');
         }
 
         $settingModel = new CheckInSettingModel();
@@ -48,15 +46,28 @@ class SettingsController extends ResourceController
             }
         }
 
-        if (empty($data)) {
-            return $this->failValidationErrors('No settings to update');
+        // Also handle SOS number and quiet hours toggle on the user record
+        $userModel = new UserModel();
+        $userUpdates = [];
+        $sosNumber = $this->request->getPost('sos_number');
+        if ($sosNumber !== null) {
+            $userUpdates['sos_number'] = $sosNumber;
+        }
+        $quietHoursEnabled = $this->request->getPost('quiet_hours_enabled');
+        if ($quietHoursEnabled !== null) {
+            $userUpdates['quiet_hours_enabled'] = $quietHoursEnabled ? 1 : 0;
+        }
+        if (!empty($userUpdates)) {
+            $userModel->update($userId, $userUpdates);
         }
 
-        if ($existing) {
-            $settingModel->update($existing->id, $data);
-        } else {
-            $data['user_id'] = $userId;
-            $settingModel->insert($data);
+        if (!empty($data)) {
+            if ($existing) {
+                $settingModel->update($existing->id, $data);
+            } else {
+                $data['user_id'] = $userId;
+                $settingModel->insert($data);
+            }
         }
 
         return $this->respond([
@@ -67,10 +78,10 @@ class SettingsController extends ResourceController
 
     public function getProfile()
     {
-        $userId = $this->request->getGet('user_id');
+        $userId = $this->getUserId();
 
         if (!$userId) {
-            return $this->failValidationErrors('user_id required');
+            return $this->failValidationErrors('Authentication required');
         }
 
         $userModel = new UserModel();
@@ -80,26 +91,37 @@ class SettingsController extends ResourceController
             return $this->failNotFound('User not found');
         }
 
+        $db = \Config\Database::connect();
+        $usedConnections = $db->table('connections')
+            ->where('user_id', $userId)
+            ->countAllResults();
+
+        $plan = $user->plan ?? 'free';
+        $maxConnections = $plan === 'paid' ? 5 : 1;
+
         return $this->respond([
             'status' => 'success',
-            'data'   => [
-                'id'       => $user->id,
-                'name'     => $user->name,
-                'email'    => $user->email,
-                'phone'    => $user->phone,
-                'role'     => $user->role,
-                'timezone' => $user->timezone,
-                'avatar'   => $user->avatar,
+            'user'   => [
+                'id'                => (int) $user->id,
+                'name'              => $user->name,
+                'email'             => $user->email,
+                'phone'             => $user->phone ?? '',
+                'user_code'         => $user->user_code,
+                'plan'              => $plan,
+                'max_connections'   => $maxConnections,
+                'used_connections'  => $usedConnections,
+                'sos_number'        => $user->sos_number ?? null,
+                'quiet_hours_enabled' => ($user->quiet_hours_enabled ?? 0) == 1,
             ],
         ]);
     }
 
     public function updateProfile()
     {
-        $userId = $this->request->getPost('user_id');
+        $userId = $this->getUserId();
 
         if (!$userId) {
-            return $this->failValidationErrors('user_id required');
+            return $this->failValidationErrors('Authentication required');
         }
 
         $userModel = new UserModel();

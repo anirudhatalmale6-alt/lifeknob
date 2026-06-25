@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use CodeIgniter\RESTful\ResourceController;
 use App\Models\CheckInModel;
 use App\Models\AlertModel;
 use App\Models\ConnectionModel;
@@ -10,18 +9,19 @@ use App\Models\FamilyMemberModel;
 use App\Models\UserModel;
 use App\Services\NotificationService;
 
-class CheckInController extends ResourceController
+class CheckInController extends ApiBaseController
 {
-    protected $format = 'json';
-
     public function create()
     {
-        $userId = $this->request->getPost('user_id');
+        $userId = $this->getUserId();
         $type   = $this->request->getPost('type');
 
         if (!$userId || !in_array($type, ['ok', 'help', 'emergency'])) {
-            return $this->failValidationErrors('user_id and valid type (ok/help/emergency) required');
+            return $this->failValidationErrors('Valid type (ok/help/emergency) required');
         }
+
+        $authCheck = $this->requireAuth();
+        if ($authCheck && !$this->request->getPost('user_id')) return $authCheck;
 
         $checkInModel = new CheckInModel();
 
@@ -59,11 +59,11 @@ class CheckInController extends ResourceController
 
     public function history()
     {
-        $userId = $this->request->getGet('user_id');
+        $userId = $this->getUserId();
         $limit  = (int)($this->request->getGet('limit') ?? 50);
 
         if (!$userId) {
-            return $this->failValidationErrors('user_id required');
+            return $this->failValidationErrors('Authentication required');
         }
 
         $checkInModel = new CheckInModel();
@@ -77,10 +77,10 @@ class CheckInController extends ResourceController
 
     public function stats()
     {
-        $userId = $this->request->getGet('user_id');
+        $userId = $this->getUserId();
 
         if (!$userId) {
-            return $this->failValidationErrors('user_id required');
+            return $this->failValidationErrors('Authentication required');
         }
 
         $checkInModel = new CheckInModel();
@@ -122,24 +122,18 @@ class CheckInController extends ResourceController
         ]);
     }
 
-    /**
-     * GET /api/checkin/connections
-     * Show latest check-in for each person connected to the requesting user.
-     * Connections are mutual: shows both people I connected to AND people who connected to me.
-     */
     public function latestForConnections()
     {
-        $userId = $this->request->getGet('user_id');
+        $userId = $this->getUserId();
 
         if (!$userId) {
-            return $this->failValidationErrors('user_id required');
+            return $this->failValidationErrors('Authentication required');
         }
 
         $connectionModel = new ConnectionModel();
         $checkInModel = new CheckInModel();
         $userModel = new UserModel();
 
-        // Get all mutually connected user IDs
         $connectedIds = $connectionModel->getAllConnectedUserIds($userId);
 
         $result = [];
@@ -175,7 +169,6 @@ class CheckInController extends ResourceController
 
         $notificationService = new NotificationService();
 
-        // Notify via legacy family groups (backward compat)
         $familyMemberModel = new FamilyMemberModel();
         $groups = model('FamilyGroupModel')->getGroupsForUser($elderId);
         $notifiedUserIds = [];
@@ -193,7 +186,6 @@ class CheckInController extends ResourceController
             }
         }
 
-        // Notify via connections (avoid double-notifying)
         $connectionModel = new ConnectionModel();
         $connectedUserIds = $connectionModel->getAllConnectedUserIds($elderId);
         foreach ($connectedUserIds as $connUserId) {
@@ -219,7 +211,6 @@ class CheckInController extends ResourceController
         $notificationService = new NotificationService();
         $priority = $type === 'emergency' ? 'EMERGENCY' : 'URGENT';
 
-        // Legacy family group alerts (backward compat)
         $notifiedUserIds = [];
         $groups = model('FamilyGroupModel')->getGroupsForUser($elderId);
         foreach ($groups as $group) {
@@ -244,7 +235,6 @@ class CheckInController extends ResourceController
             }
         }
 
-        // Connection-based alerts (avoid double-notifying)
         $connectionModel = new ConnectionModel();
         $connectedUserIds = $connectionModel->getAllConnectedUserIds($elderId);
         foreach ($connectedUserIds as $connUserId) {

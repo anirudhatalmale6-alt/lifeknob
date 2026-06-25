@@ -16,7 +16,6 @@ class AuthController extends ResourceController
             'email'    => 'required|valid_email|is_unique[users.email]',
             'password' => 'required|min_length[6]',
             'name'     => 'required|min_length[2]|max_length[100]',
-            'role'     => 'required|in_list[elder,family]',
             'phone'    => 'permit_empty|max_length[20]',
             'timezone' => 'permit_empty|max_length[50]',
         ];
@@ -31,7 +30,7 @@ class AuthController extends ResourceController
             'email'     => $this->request->getPost('email'),
             'password'  => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
             'name'      => $this->request->getPost('name'),
-            'role'      => $this->request->getPost('role'),
+            'role'      => 'elder',
             'phone'     => $this->request->getPost('phone') ?? null,
             'timezone'  => $this->request->getPost('timezone') ?? 'UTC',
             'user_code' => $userModel->generateUserCode(),
@@ -42,27 +41,31 @@ class AuthController extends ResourceController
             return $this->failServerError('Registration failed');
         }
 
-        if ($userData['role'] === 'elder') {
-            $settingModel = new CheckInSettingModel();
-            $settingModel->insert([
-                'user_id'              => $userId,
-                'frequency_hours'      => 24,
-                'reminder_minutes'     => 30,
-                'alert_delay_minutes'  => 60,
-                'is_active'            => 1,
-            ]);
-        }
+        $settingModel = new CheckInSettingModel();
+        $settingModel->insert([
+            'user_id'              => $userId,
+            'frequency_hours'      => 24,
+            'reminder_minutes'     => 30,
+            'alert_delay_minutes'  => 60,
+            'is_active'            => 1,
+        ]);
 
         $token = $this->generateToken($userId);
+        $user = $userModel->find($userId);
 
         return $this->respondCreated([
             'status'  => 'success',
             'message' => 'Registration successful',
-            'data'    => [
-                'user_id'   => $userId,
-                'token'     => $token,
-                'role'      => $userData['role'],
+            'token'   => $token,
+            'user'    => [
+                'id'        => (int)$userId,
+                'name'      => $userData['name'],
+                'email'     => $userData['email'],
+                'phone'     => $userData['phone'] ?? '',
                 'user_code' => $userData['user_code'],
+                'plan'      => 'free',
+                'max_connections'  => 1,
+                'used_connections' => 0,
             ],
         ]);
     }
@@ -97,17 +100,26 @@ class AuthController extends ResourceController
             $userModel->updateFirebaseToken($user->id, $firebaseToken);
         }
 
+        $db = \Config\Database::connect();
+        $usedConnections = $db->table('connections')
+            ->where('user_id', $user->id)
+            ->countAllResults();
+
+        $maxConnections = ($user->plan ?? 'free') === 'paid' ? 5 : 1;
+
         return $this->respond([
             'status'  => 'success',
             'message' => 'Login successful',
-            'data'    => [
-                'user_id'   => $user->id,
-                'token'     => $token,
+            'token'   => $token,
+            'user'    => [
+                'id'        => (int)$user->id,
                 'name'      => $user->name,
                 'email'     => $user->email,
-                'role'      => $user->role,
+                'phone'     => $user->phone ?? '',
                 'user_code' => $user->user_code,
                 'plan'      => $user->plan ?? 'free',
+                'max_connections'  => $maxConnections,
+                'used_connections' => $usedConnections,
             ],
         ]);
     }

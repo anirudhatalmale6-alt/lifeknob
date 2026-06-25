@@ -30,14 +30,12 @@ class UserModel extends Model
         'user_code',
         'plan',
         'last_code_change',
+        'sos_number',
+        'quiet_hours_enabled',
     ];
 
-    protected $validationRules = [
-        'email'    => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'password' => 'required|min_length[6]',
-        'name'     => 'required|min_length[2]',
-        'role'     => 'required|in_list[elder,family,admin]',
-    ];
+    protected $validationRules = [];
+    protected $skipValidation = true;
 
     protected $validationMessages = [
         'email' => [
@@ -45,20 +43,8 @@ class UserModel extends Model
         ],
     ];
 
-    protected $beforeInsert = ['hashPassword'];
-    protected $beforeUpdate = ['hashPassword'];
-
-    /**
-     * Hash password before saving.
-     */
-    protected function hashPassword(array $data): array
-    {
-        if (isset($data['data']['password'])) {
-            $data['data']['password'] = password_hash($data['data']['password'], PASSWORD_BCRYPT);
-        }
-
-        return $data;
-    }
+    protected $beforeInsert = [];
+    protected $beforeUpdate = [];
 
     /**
      * Find a user by email address.
