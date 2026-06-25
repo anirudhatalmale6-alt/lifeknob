@@ -31,6 +31,7 @@ class UserModel extends Model
         'plan',
         'last_code_change',
         'sos_number',
+        'sos_name',
         'quiet_hours_enabled',
     ];
 
