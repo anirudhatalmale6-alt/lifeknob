@@ -48,6 +48,7 @@ $routes->group('api', function ($routes) {
     $routes->post('settings', 'Api\SettingsController::updateSettings');
     $routes->get('profile', 'Api\SettingsController::getProfile');
     $routes->post('profile', 'Api\SettingsController::updateProfile');
+    $routes->post('profile/avatar', 'Api\SettingsController::uploadAvatar');
 });
 
 // Web check-in (for users without phones)

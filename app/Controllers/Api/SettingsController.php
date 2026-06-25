@@ -111,6 +111,7 @@ class SettingsController extends ApiBaseController
                 'used_connections'  => $usedConnections,
                 'sos_number'        => $user->sos_number ?? null,
                 'quiet_hours_enabled' => ($user->quiet_hours_enabled ?? 0) == 1,
+                'avatar'            => $user->avatar ?? null,
             ],
         ]);
     }
@@ -143,6 +144,51 @@ class SettingsController extends ApiBaseController
         return $this->respond([
             'status'  => 'success',
             'message' => 'Profile updated',
+        ]);
+    }
+
+    public function uploadAvatar()
+    {
+        $userId = $this->getUserId();
+
+        if (!$userId) {
+            return $this->failValidationErrors('Authentication required');
+        }
+
+        $file = $this->request->getFile('avatar');
+        if (!$file || !$file->isValid()) {
+            return $this->failValidationErrors('No valid image uploaded');
+        }
+
+        if ($file->getSize() > 2 * 1024 * 1024) {
+            return $this->failValidationErrors('Image must be under 2MB');
+        }
+
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!in_array($file->getMimeType(), $allowedTypes)) {
+            return $this->failValidationErrors('Only JPG, PNG, and WebP images are allowed');
+        }
+
+        $newName = 'avatar_' . $userId . '_' . time() . '.' . $file->getExtension();
+        $uploadPath = FCPATH . 'uploads/avatars/';
+
+        $userModel = new UserModel();
+        $user = $userModel->find($userId);
+        if ($user && !empty($user->avatar)) {
+            $oldFile = $uploadPath . basename($user->avatar);
+            if (file_exists($oldFile)) {
+                unlink($oldFile);
+            }
+        }
+
+        $file->move($uploadPath, $newName);
+        $avatarUrl = '/uploads/avatars/' . $newName;
+        $userModel->update($userId, ['avatar' => $avatarUrl]);
+
+        return $this->respond([
+            'status'     => 'success',
+            'message'    => 'Avatar updated',
+            'avatar_url' => $avatarUrl,
         ]);
     }
 }
