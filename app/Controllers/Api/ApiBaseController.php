@@ -22,6 +22,12 @@ class ApiBaseController extends ResourceController
     {
         $header = $this->request->getHeaderLine('Authorization');
         if (empty($header) || !str_starts_with($header, 'Bearer ')) {
+            $header = $_SERVER['HTTP_AUTHORIZATION']
+                ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+                ?? getallheaders()['Authorization']
+                ?? '';
+        }
+        if (empty($header) || !str_starts_with($header, 'Bearer ')) {
             return null;
         }
 
