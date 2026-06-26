@@ -136,7 +136,7 @@ class SettingsController extends ApiBaseController
 
         $userModel = new UserModel();
         $data = [];
-        $fields = ['name', 'phone', 'timezone'];
+        $fields = ['name', 'email', 'phone', 'timezone'];
 
         foreach ($fields as $field) {
             $value = $this->input($field);
