@@ -40,25 +40,43 @@ class ConnectionController extends ApiBaseController
             return $this->fail("Connection limit reached. Your plan allows {$max} connection(s).", 403);
         }
 
-        if (($user->plan ?? 'free') === 'free' && !empty($user->last_code_change)) {
-            if (!$connectionModel->canChangeConnection($userId)) {
-                $remaining = $connectionModel->getCooldownRemaining($userId);
-                $hours = ceil($remaining / 3600);
-                return $this->fail("You can change your connection in {$hours} hours (3-day cooldown for free users).", 429);
-            }
-        }
+// Cooldown disabled for now
 
         $connId = $connectionModel->connect($userId, $targetUser->id);
         if (!$connId) {
             return $this->failServerError('Failed to send request');
         }
 
+        // Auto-connect for test users (TEST prefix codes)
+        if (str_starts_with($targetUser->user_code, 'TEST')) {
+            $connectionModel->update($connId, ['status' => 'accepted']);
+            if (!$connectionModel->connectionExists($targetUser->id, $userId)) {
+                $connectionModel->connect($targetUser->id, $userId);
+                $connectionModel->where('user_id', $targetUser->id)->where('connected_to', $userId)->set(['status' => 'accepted'])->update();
+            }
+            $connStatus = 'accepted';
+        }
+
+        // Auto-accept: if the other person already added us, accept both
+        $reverseConn = $connectionModel->where('user_id', $targetUser->id)
+            ->where('connected_to', $userId)
+            ->first();
+        
+        $connStatus = 'pending';
+        if ($reverseConn) {
+            $connectionModel->update($connId, ['status' => 'accepted']);
+            $connectionModel->update($reverseConn->id, ['status' => 'accepted']);
+            $connStatus = 'accepted';
+        }
+
         return $this->respondCreated([
             'status'  => 'success',
-            'message' => 'Connection request sent to ' . $targetUser->name,
+            'message' => $connStatus === 'accepted' 
+                ? 'Connected with ' . $targetUser->name . '!'
+                : 'Connection request sent to ' . $targetUser->name,
             'data'    => [
                 'connection_id' => $connId,
-                'connection_status' => 'pending',
+                'connection_status' => $connStatus,
                 'connected_to'  => [
                     'user_id'   => $targetUser->id,
                     'name'      => $targetUser->name,
@@ -153,20 +171,7 @@ class ConnectionController extends ApiBaseController
             return $this->failNotFound('Connection not found');
         }
 
-        $user = $userModel->find($userId);
-        if (($user->plan ?? 'free') === 'free') {
-            if (!$connectionModel->canChangeConnection($userId)) {
-                $remaining = $connectionModel->getCooldownRemaining($userId);
-                $hours = ceil($remaining / 3600);
-                return $this->fail("You can change your connection in {$hours} hours (3-day cooldown).", 429);
-            }
-        }
-
         $connectionModel->disconnect($userId, $connectedTo);
-
-        if (($user->plan ?? 'free') === 'free') {
-            $userModel->update($userId, ['last_code_change' => date('Y-m-d H:i:s')]);
-        }
 
         return $this->respond([
             'status'  => 'success',
@@ -286,6 +291,31 @@ class ConnectionController extends ApiBaseController
                 'cooldown_remaining_seconds' => $cooldownRemaining,
                 'cooldown_remaining_hours'   => $cooldownRemaining > 0 ? ceil($cooldownRemaining / 3600) : 0,
             ],
+        ]);
+    }
+
+    public function updateConnection()
+    {
+        $userId = $this->getUserId();
+        $connectionId = $this->input("connection_id");
+        $name = $this->input("name");
+
+        if (!$userId || !$connectionId || !$name) {
+            return $this->failValidationErrors("connection_id and name are required");
+        }
+
+        $connectionModel = new ConnectionModel();
+        $conn = $connectionModel->find($connectionId);
+
+        if (!$conn || (int) $conn->user_id !== (int) $userId) {
+            return $this->failNotFound("Connection not found");
+        }
+
+        $connectionModel->update($connectionId, ["display_name" => $name]);
+
+        return $this->respond([
+            "status" => "success",
+            "message" => "Connection name updated",
         ]);
     }
 }

@@ -12,10 +12,17 @@ class SettingsController extends BaseController
             return redirect()->to('/admin/login');
         }
 
+        $db = db_connect();
+        $siteSettings = [];
+        $rows = $db->table('site_settings')->get()->getResultArray();
+        foreach ($rows as $row) {
+            $siteSettings[$row['setting_key']] = $row['setting_value'];
+        }
+
         $settings = [
-            'default_frequency_hours'     => getenv('DEFAULT_FREQUENCY_HOURS') ?: 24,
-            'default_reminder_minutes'    => getenv('DEFAULT_REMINDER_MINUTES') ?: 30,
-            'default_alert_delay_minutes' => getenv('DEFAULT_ALERT_DELAY_MINUTES') ?: 60,
+            'alert_threshold_days'        => $siteSettings['alert_threshold_days'] ?? '2',
+            'reminder_enabled'            => $siteSettings['reminder_enabled'] ?? '1',
+            'alert_email_enabled'         => $siteSettings['alert_email_enabled'] ?? '1',
             'firebase_configured'         => file_exists(WRITEPATH . 'firebase/service-account.json'),
             'cron_token'                  => getenv('CRON_TOKEN') ?: 'lifeknob2026cronkey',
         ];
@@ -30,6 +37,19 @@ class SettingsController extends BaseController
     {
         if (!session()->get('is_admin')) {
             return redirect()->to('/admin/login');
+        }
+
+        $db = db_connect();
+        $fields = ['alert_threshold_days', 'reminder_enabled', 'alert_email_enabled'];
+        
+        foreach ($fields as $key) {
+            $value = $this->request->getPost($key);
+            if ($value !== null) {
+                $db->table('site_settings')->replace([
+                    'setting_key' => $key,
+                    'setting_value' => $value,
+                ]);
+            }
         }
 
         return redirect()->to('/admin/settings')->with('success', 'Settings saved');

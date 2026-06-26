@@ -12,25 +12,35 @@
     </div>
 <?php endif; ?>
 
+<form method="post" action="/admin/settings/save">
 <div class="row g-4">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header"><h6 class="mb-0">Default Check-in Settings</h6></div>
+            <div class="card-header"><h6 class="mb-0">Alert Settings</h6></div>
             <div class="card-body">
-                <table class="table table-borderless mb-0">
-                    <tr>
-                        <td class="text-muted">Default Frequency</td>
-                        <td><strong><?= $settings['default_frequency_hours'] ?> hours</strong></td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Reminder Before Deadline</td>
-                        <td><strong><?= $settings['default_reminder_minutes'] ?> minutes</strong></td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Alert Delay After Miss</td>
-                        <td><strong><?= $settings['default_alert_delay_minutes'] ?> minutes</strong></td>
-                    </tr>
-                </table>
+                <div class="mb-3">
+                    <label class="form-label">Alert Threshold (days without OK button)</label>
+                    <select name="alert_threshold_days" class="form-select">
+                        <option value="1" <?= $settings['alert_threshold_days'] == '1' ? 'selected' : '' ?>>1 day</option>
+                        <option value="2" <?= $settings['alert_threshold_days'] == '2' ? 'selected' : '' ?>>2 days</option>
+                        <option value="3" <?= $settings['alert_threshold_days'] == '3' ? 'selected' : '' ?>>3 days</option>
+                        <option value="5" <?= $settings['alert_threshold_days'] == '5' ? 'selected' : '' ?>>5 days</option>
+                        <option value="7" <?= $settings['alert_threshold_days'] == '7' ? 'selected' : '' ?>>7 days</option>
+                    </select>
+                    <small class="text-muted">Connections turn red after this many days without pressing OK</small>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="alert_email_enabled" value="1" <?= $settings['alert_email_enabled'] == '1' ? 'checked' : '' ?>>
+                        <label class="form-check-label">Send alert emails when overdue</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="reminder_enabled" value="1" <?= $settings['reminder_enabled'] == '1' ? 'checked' : '' ?>>
+                        <label class="form-check-label">Daily reminder push notifications</label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -54,24 +64,15 @@
                         <td class="text-muted">Cron Token</td>
                         <td><code><?= esc($settings['cron_token']) ?></code></td>
                     </tr>
-                    <tr>
-                        <td class="text-muted">Cron URL</td>
-                        <td><code>/cron/checkins?token=<?= esc($settings['cron_token']) ?></code></td>
-                    </tr>
                 </table>
             </div>
         </div>
     </div>
 
     <div class="col-12">
-        <div class="card">
-            <div class="card-header"><h6 class="mb-0">Cron Setup</h6></div>
-            <div class="card-body">
-                <p class="text-muted mb-2">Add this to your server's crontab to run check-in monitoring every 5 minutes:</p>
-                <pre class="bg-dark text-light p-3 rounded">*/5 * * * * curl -s --max-time 60 "https://lifeknob.com/cron/checkins?token=<?= esc($settings['cron_token']) ?>" > /dev/null 2>&1</pre>
-            </div>
-        </div>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
     </div>
 </div>
+</form>
 
 <?= $this->endSection() ?>

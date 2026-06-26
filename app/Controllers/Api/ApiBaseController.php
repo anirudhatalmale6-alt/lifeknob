@@ -16,6 +16,30 @@ class ApiBaseController extends ResourceController
     ) {
         parent::initController($request, $response, $logger);
         $this->userId = $this->extractUserIdFromToken();
+        if ($this->userId) {
+            $this->recordActivity($this->userId);
+        }
+    }
+
+    protected function recordActivity(int $userId): void
+    {
+        $db = \Config\Database::connect();
+        $now = date("Y-m-d H:i:s");
+        $db->table("users")->where("id", $userId)->update(["last_seen_at" => $now]);
+        
+        // Update or create check-in (any activity = alive)
+        $latest = $db->table("check_ins")->where("user_id", $userId)->orderBy("created_at", "DESC")->get(1)->getRow();
+        if ($latest) {
+            $lastTime = strtotime($latest->created_at);
+            // Only create new check-in if last one was more than 5 minutes ago
+            if ((time() - $lastTime) > 300) {
+                $db->table("check_ins")->insert(["user_id" => $userId, "type" => "activity", "created_at" => $now]);
+            } else {
+                $db->table("check_ins")->where("id", $latest->id)->update(["created_at" => $now]);
+            }
+        } else {
+            $db->table("check_ins")->insert(["user_id" => $userId, "type" => "activity", "created_at" => $now]);
+        }
     }
 
     protected function extractUserIdFromToken(): ?int

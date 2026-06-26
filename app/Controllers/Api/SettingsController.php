@@ -209,4 +209,18 @@ class SettingsController extends ApiBaseController
             'avatar_url' => $avatarUrl,
         ]);
     }
+
+    public function getSiteSettings()
+    {
+        $db = db_connect();
+        $rows = $db->table("site_settings")->get()->getResultArray();
+        $settings = [];
+        foreach ($rows as $row) {
+            $settings[$row["setting_key"]] = $row["setting_value"];
+        }
+        return $this->respond([
+            "status" => "success",
+            "data" => $settings,
+        ]);
+    }
 }

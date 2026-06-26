@@ -18,11 +18,12 @@ class ConnectionModel extends Model
         'connected_to',
         'status',
         'created_at',
+        'display_name',
     ];
 
     public function getConnectionsForUser(int $userId): array
     {
-        return $this->select('connections.id as connection_id, connections.status, connections.created_at as connected_since, users.id as user_id, users.name, users.email, users.user_code, users.last_seen_at, users.avatar')
+        return $this->select('connections.id as connection_id, connections.status, connections.created_at as connected_since, connections.display_name, users.id as user_id, COALESCE(connections.display_name, users.name) as name, users.email, users.user_code, users.last_seen_at, users.avatar')
             ->join('users', 'users.id = connections.connected_to')
             ->where('connections.user_id', $userId)
             ->findAll();
@@ -74,9 +75,10 @@ class ConnectionModel extends Model
 
     public function disconnect(int $userId, int $connectedTo): bool
     {
-        return $this->where('user_id', $userId)
-            ->where('connected_to', $connectedTo)
-            ->delete();
+        // Delete both directions
+        $this->where('user_id', $userId)->where('connected_to', $connectedTo)->delete();
+        $this->where('user_id', $connectedTo)->where('connected_to', $userId)->delete();
+        return true;
     }
 
     public function getConnectionCount(int $userId): int

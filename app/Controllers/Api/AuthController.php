@@ -196,6 +196,14 @@ class AuthController extends ApiBaseController
             'is_active'            => 1,
         ]);
 
+        // First check-in: registration = alive
+        $db = \Config\Database::connect();
+        $db->table('check_ins')->insert([
+            'user_id'    => $userId,
+            'type'       => 'ok',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
         $token = $this->generateToken($userId);
 
         return $this->respondCreated([

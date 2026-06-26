@@ -32,6 +32,7 @@ $routes->group('api', function ($routes) {
     // Connections (1-to-1 code-based)
     $routes->post('connection/connect', 'Api\ConnectionController::connect');
     $routes->post('connection/accept', 'Api\ConnectionController::acceptRequest');
+    $routes->post('connection/update', 'Api\ConnectionController::updateConnection');
     $routes->post('connection/reject', 'Api\ConnectionController::rejectRequest');
     $routes->get('connection/pending', 'Api\ConnectionController::pendingRequests');
     $routes->post('connection/disconnect', 'Api\ConnectionController::disconnect');
@@ -50,6 +51,7 @@ $routes->group('api', function ($routes) {
     // Settings & profile
     $routes->get('settings', 'Api\SettingsController::getSettings');
     $routes->post('settings', 'Api\SettingsController::updateSettings');
+    $routes->get("site-settings", "Api\SettingsController::getSiteSettings");
     $routes->get('profile', 'Api\SettingsController::getProfile');
     $routes->post('profile', 'Api\SettingsController::updateProfile');
     $routes->post('profile/avatar', 'Api\SettingsController::uploadAvatar');
