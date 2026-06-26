@@ -33,6 +33,7 @@ class UserModel extends Model
         'sos_number',
         'sos_name',
         'ambulance_number',
+        'device_id',
         'quiet_hours_enabled',
     ];
 
@@ -94,6 +95,11 @@ class UserModel extends Model
     public function findByCode(string $code): ?object
     {
         return $this->where('user_code', $code)->first();
+    }
+
+    public function findByDeviceId(string $deviceId): ?object
+    {
+        return $this->where('device_id', $deviceId)->first();
     }
 
     /**

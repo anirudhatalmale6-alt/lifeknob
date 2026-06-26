@@ -130,6 +130,95 @@ class AuthController extends ApiBaseController
         ]);
     }
 
+    public function autoRegister()
+    {
+        $deviceId = $this->input('device_id');
+
+        if (empty($deviceId)) {
+            return $this->failValidationErrors('device_id is required');
+        }
+
+        $userModel = new UserModel();
+
+        $existing = $userModel->findByDeviceId($deviceId);
+        if ($existing) {
+            $token = $this->generateToken($existing->id);
+            $userModel->updateLastSeen($existing->id);
+
+            $db = \Config\Database::connect();
+            $usedConnections = $db->table('connections')
+                ->where('user_id', $existing->id)
+                ->countAllResults();
+            $maxConnections = ($existing->plan ?? 'free') === 'paid' ? 5 : 1;
+
+            return $this->respond([
+                'status'  => 'success',
+                'message' => 'Welcome back',
+                'token'   => $token,
+                'user'    => [
+                    'id'               => (int) $existing->id,
+                    'name'             => $existing->name ?? '',
+                    'email'            => $existing->email ?? '',
+                    'phone'            => $existing->phone ?? '',
+                    'user_code'        => $existing->user_code,
+                    'plan'             => $existing->plan ?? 'free',
+                    'max_connections'  => $maxConnections,
+                    'used_connections' => $usedConnections,
+                    'sos_number'       => $existing->sos_number ?? null,
+                    'sos_name'         => $existing->sos_name ?? null,
+                    'ambulance_number' => $existing->ambulance_number ?? null,
+                    'avatar'           => $existing->avatar ?? null,
+                ],
+            ]);
+        }
+
+        $userCode = $userModel->generateUserCode();
+
+        $userId = $userModel->insert([
+            'device_id'  => $deviceId,
+            'user_code'  => $userCode,
+            'role'       => 'elder',
+            'name'       => '',
+            'password'   => '',
+            'is_active'  => 1,
+        ]);
+
+        if (!$userId) {
+            return $this->failServerError('Could not create account');
+        }
+
+        $settingModel = new CheckInSettingModel();
+        $settingModel->insert([
+            'user_id'              => $userId,
+            'frequency_hours'      => 24,
+            'reminder_minutes'     => 30,
+            'alert_delay_minutes'  => 60,
+            'is_active'            => 1,
+        ]);
+
+        $token = $this->generateToken($userId);
+
+        return $this->respondCreated([
+            'status'  => 'success',
+            'message' => 'Account created',
+            'token'   => $token,
+            'user'    => [
+                'id'               => (int) $userId,
+                'name'             => '',
+                'email'            => '',
+                'phone'            => '',
+                'user_code'        => $userCode,
+                'plan'             => 'free',
+                'max_connections'  => 1,
+                'used_connections' => 0,
+                'sos_number'       => null,
+                'sos_name'         => null,
+                'ambulance_number' => null,
+                'avatar'           => null,
+            ],
+        ]);
+    }
+
     public function updateFirebaseToken()
     {
         $userId = $this->getUserId();

@@ -12,6 +12,7 @@ $routes->group('api', function ($routes) {
     // Auth
     $routes->post('auth/register', 'Api\AuthController::register');
     $routes->post('auth/login', 'Api\AuthController::login');
+    $routes->post('auth/auto-register', 'Api\AuthController::autoRegister');
     $routes->post('auth/firebase-token', 'Api\AuthController::updateFirebaseToken');
 
     // Check-ins
