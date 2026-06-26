@@ -32,6 +32,7 @@ class UserModel extends Model
         'last_code_change',
         'sos_number',
         'sos_name',
+        'ambulance_number',
         'quiet_hours_enabled',
     ];
 

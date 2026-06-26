@@ -56,6 +56,10 @@ class SettingsController extends ApiBaseController
         if ($sosName !== null) {
             $userUpdates['sos_name'] = $sosName;
         }
+        $ambulanceNumber = $this->input('ambulance_number');
+        if ($ambulanceNumber !== null) {
+            $userUpdates['ambulance_number'] = $ambulanceNumber;
+        }
         $quietHoursEnabled = $this->input('quiet_hours_enabled');
         if ($quietHoursEnabled !== null) {
             $userUpdates['quiet_hours_enabled'] = $quietHoursEnabled ? 1 : 0;
@@ -115,6 +119,7 @@ class SettingsController extends ApiBaseController
                 'used_connections'  => $usedConnections,
                 'sos_number'        => $user->sos_number ?? null,
                 'sos_name'          => $user->sos_name ?? null,
+                'ambulance_number'  => $user->ambulance_number ?? null,
                 'quiet_hours_enabled' => ($user->quiet_hours_enabled ?? 0) == 1,
                 'avatar'            => $user->avatar ?? null,
             ],
