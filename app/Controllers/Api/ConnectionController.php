@@ -30,7 +30,7 @@ class ConnectionController extends ApiBaseController
         }
 
         if ($connectionModel->connectionExists($userId, $targetUser->id)) {
-            return $this->fail('You are already connected to this person', 409);
+            return $this->fail('You already sent a request to this person', 409);
         }
 
         $user = $userModel->find($userId);
@@ -40,7 +40,6 @@ class ConnectionController extends ApiBaseController
             return $this->fail("Connection limit reached. Your plan allows {$max} connection(s).", 403);
         }
 
-        $user = $userModel->find($userId);
         if (($user->plan ?? 'free') === 'free' && !empty($user->last_code_change)) {
             if (!$connectionModel->canChangeConnection($userId)) {
                 $remaining = $connectionModel->getCooldownRemaining($userId);
@@ -51,20 +50,90 @@ class ConnectionController extends ApiBaseController
 
         $connId = $connectionModel->connect($userId, $targetUser->id);
         if (!$connId) {
-            return $this->failServerError('Failed to create connection');
+            return $this->failServerError('Failed to send request');
         }
 
         return $this->respondCreated([
             'status'  => 'success',
-            'message' => 'Connected to ' . $targetUser->name,
+            'message' => 'Connection request sent to ' . $targetUser->name,
             'data'    => [
                 'connection_id' => $connId,
+                'connection_status' => 'pending',
                 'connected_to'  => [
                     'user_id'   => $targetUser->id,
                     'name'      => $targetUser->name,
                     'user_code' => $targetUser->user_code,
                 ],
             ],
+        ]);
+    }
+
+    public function acceptRequest()
+    {
+        $userId = $this->getUserId();
+        $connectionId = $this->input('connection_id');
+
+        if (!$userId || !$connectionId) {
+            return $this->failValidationErrors('connection_id is required');
+        }
+
+        $connectionModel = new ConnectionModel();
+        $result = $connectionModel->acceptConnection((int) $connectionId, $userId);
+
+        if (!$result) {
+            return $this->failNotFound('Request not found or already processed');
+        }
+
+        return $this->respond([
+            'status'  => 'success',
+            'message' => 'Connection accepted',
+        ]);
+    }
+
+    public function rejectRequest()
+    {
+        $userId = $this->getUserId();
+        $connectionId = $this->input('connection_id');
+
+        if (!$userId || !$connectionId) {
+            return $this->failValidationErrors('connection_id is required');
+        }
+
+        $connectionModel = new ConnectionModel();
+        $result = $connectionModel->rejectConnection((int) $connectionId, $userId);
+
+        return $this->respond([
+            'status'  => 'success',
+            'message' => 'Connection rejected',
+        ]);
+    }
+
+    public function pendingRequests()
+    {
+        $userId = $this->getUserId();
+
+        if (!$userId) {
+            return $this->failValidationErrors('Authentication required');
+        }
+
+        $connectionModel = new ConnectionModel();
+        $requests = $connectionModel->getPendingRequests($userId);
+
+        $result = [];
+        foreach ($requests as $req) {
+            $result[] = [
+                'connection_id' => $req->connection_id,
+                'user_id'       => $req->user_id,
+                'name'          => $req->name,
+                'user_code'     => $req->user_code,
+                'avatar'        => $req->avatar ?? null,
+                'requested_at'  => $req->requested_at,
+            ];
+        }
+
+        return $this->respond([
+            'status' => 'success',
+            'data'   => $result,
         ]);
     }
 
@@ -120,16 +189,23 @@ class ConnectionController extends ApiBaseController
 
         $result = [];
         foreach ($connections as $conn) {
-            $latestCheckIn = $checkInModel->getLatestCheckIn($conn->user_id);
-            $result[] = [
-                'id'              => $conn->id ?? $conn->user_id,
+            $data = [
+                'id'              => $conn->connection_id ?? $conn->user_id,
                 'user_id'         => $conn->user_id,
                 'name'            => $conn->name,
                 'user_code'       => $conn->user_code,
+                'avatar'          => $conn->avatar ?? null,
+                'status'          => $conn->status ?? 'accepted',
                 'connected_since' => $conn->connected_since ?? null,
-                'last_check_in'   => $latestCheckIn ? $latestCheckIn->created_at : null,
-                'last_check_in_type' => $latestCheckIn ? $latestCheckIn->type : null,
             ];
+
+            if (($conn->status ?? 'accepted') === 'accepted') {
+                $latestCheckIn = $checkInModel->getLatestCheckIn($conn->user_id);
+                $data['last_check_in'] = $latestCheckIn ? $latestCheckIn->created_at : null;
+                $data['last_check_in_type'] = $latestCheckIn ? $latestCheckIn->type : null;
+            }
+
+            $result[] = $data;
         }
 
         return $this->respond([
@@ -153,16 +229,23 @@ class ConnectionController extends ApiBaseController
 
         $result = [];
         foreach ($watchers as $watcher) {
-            $latestCheckIn = $checkInModel->getLatestCheckIn($watcher->user_id);
-            $result[] = [
-                'id'              => $watcher->id ?? $watcher->user_id,
+            $data = [
+                'id'              => $watcher->connection_id ?? $watcher->user_id,
                 'user_id'         => $watcher->user_id,
                 'name'            => $watcher->name,
                 'user_code'       => $watcher->user_code,
+                'avatar'          => $watcher->avatar ?? null,
+                'status'          => $watcher->status ?? 'accepted',
                 'connected_since' => $watcher->connected_since ?? null,
-                'last_check_in'   => $latestCheckIn ? $latestCheckIn->created_at : null,
-                'last_check_in_type' => $latestCheckIn ? $latestCheckIn->type : null,
             ];
+
+            if (($watcher->status ?? 'accepted') === 'accepted') {
+                $latestCheckIn = $checkInModel->getLatestCheckIn($watcher->user_id);
+                $data['last_check_in'] = $latestCheckIn ? $latestCheckIn->created_at : null;
+                $data['last_check_in_type'] = $latestCheckIn ? $latestCheckIn->type : null;
+            }
+
+            $result[] = $data;
         }
 
         return $this->respond([
@@ -187,8 +270,7 @@ class ConnectionController extends ApiBaseController
             return $this->failNotFound('User not found');
         }
 
-        $plan = $user->plan ?? 'free';
-        $maxConnections = $plan === 'paid' ? 5 : 1;
+        $maxConnections = $user->max_connections ?? (($user->plan ?? 'free') === 'paid' ? 5 : 1);
         $currentCount = $connectionModel->getConnectionCount($userId);
         $canChange = $connectionModel->canChangeConnection($userId);
         $cooldownRemaining = $connectionModel->getCooldownRemaining($userId);
@@ -197,7 +279,7 @@ class ConnectionController extends ApiBaseController
             'status' => 'success',
             'data'   => [
                 'user_code'          => $user->user_code,
-                'plan'               => $plan,
+                'plan'               => $user->plan ?? 'free',
                 'max_connections'    => $maxConnections,
                 'current_connections' => $currentCount,
                 'can_change'         => $canChange,
