@@ -33,10 +33,10 @@ class ConnectionController extends ApiBaseController
             return $this->fail('You are already connected to this person', 409);
         }
 
-        if (!$connectionModel->canConnect($userId)) {
-            $user = $userModel->find($userId);
-            $plan = $user->plan ?? 'free';
-            $max = $plan === 'paid' ? 5 : 1;
+        $user = $userModel->find($userId);
+        $max = $user->max_connections ?? (($user->plan ?? 'free') === 'paid' ? 5 : 1);
+        $currentCount = $connectionModel->getConnectionCount($userId);
+        if ($currentCount >= $max) {
             return $this->fail("Connection limit reached. Your plan allows {$max} connection(s).", 403);
         }
 

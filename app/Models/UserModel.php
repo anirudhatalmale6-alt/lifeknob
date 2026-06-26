@@ -29,6 +29,7 @@ class UserModel extends Model
         'last_seen_at',
         'user_code',
         'plan',
+        'max_connections',
         'last_code_change',
         'sos_number',
         'sos_name',

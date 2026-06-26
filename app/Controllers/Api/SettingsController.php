@@ -60,6 +60,14 @@ class SettingsController extends ApiBaseController
         if ($ambulanceNumber !== null) {
             $userUpdates['ambulance_number'] = $ambulanceNumber;
         }
+        $plan = $this->input('plan');
+        if ($plan !== null) {
+            $userUpdates['plan'] = $plan;
+        }
+        $maxConn = $this->input('max_connections');
+        if ($maxConn !== null) {
+            $userUpdates['max_connections'] = (int) $maxConn;
+        }
         $quietHoursEnabled = $this->input('quiet_hours_enabled');
         if ($quietHoursEnabled !== null) {
             $userUpdates['quiet_hours_enabled'] = $quietHoursEnabled ? 1 : 0;
@@ -104,7 +112,7 @@ class SettingsController extends ApiBaseController
             ->countAllResults();
 
         $plan = $user->plan ?? 'free';
-        $maxConnections = $plan === 'paid' ? 5 : 1;
+        $maxConnections = $user->max_connections ?? ($plan === 'paid' ? 5 : 1);
 
         return $this->respond([
             'status' => 'success',
