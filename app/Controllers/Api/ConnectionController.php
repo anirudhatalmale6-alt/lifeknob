@@ -29,55 +29,76 @@ class ConnectionController extends ApiBaseController
             return $this->fail('You cannot connect to yourself', 400);
         }
 
-        if ($connectionModel->connectionExists($userId, $targetUser->id)) {
-            return $this->fail('You already sent a request to this person', 409);
-        }
-
         $user = $userModel->find($userId);
         $max = $user->max_connections ?? (($user->plan ?? 'free') === 'paid' ? 5 : 1);
-        $currentCount = $connectionModel->getConnectionCount($userId);
-        if ($currentCount >= $max) {
-            return $this->fail("Connection limit reached. Your plan allows {$max} connection(s).", 403);
+
+        // Check if connection already exists
+        $existingConn = $connectionModel->where('user_id', $userId)
+            ->where('connected_to', $targetUser->id)
+            ->first();
+
+        if ($existingConn) {
+            if ($existingConn->status === 'inactive') {
+                // Reactivating after disconnect - check limit
+                $currentCount = $connectionModel->getConnectionCount($userId);
+                if ($currentCount >= $max) {
+                    return $this->fail("Connection limit reached. Your plan allows {$max} connection(s).", 403);
+                }
+                $connectionModel->update($existingConn->id, ['status' => 'pending']);
+                $connId = $existingConn->id;
+            } else {
+                return $this->fail('You already have a connection to this person', 409);
+            }
+        } else {
+            // New connection - check limit
+            $currentCount = $connectionModel->getConnectionCount($userId);
+            if ($currentCount >= $max) {
+                return $this->fail("Connection limit reached. Your plan allows {$max} connection(s).", 403);
+            }
+            $connId = $connectionModel->connect($userId, $targetUser->id);
+            if (!$connId) {
+                return $this->failServerError('Failed to create connection');
+            }
         }
 
-// Cooldown disabled for now
-
-        $connId = $connectionModel->connect($userId, $targetUser->id);
-        if (!$connId) {
-            return $this->failServerError('Failed to send request');
-        }
+        $connStatus = 'pending';
 
         // Auto-connect for test users (TEST prefix codes)
         if (str_starts_with($targetUser->user_code, 'TEST')) {
             $connectionModel->update($connId, ['status' => 'accepted']);
             if (!$connectionModel->connectionExists($targetUser->id, $userId)) {
-                $connectionModel->connect($targetUser->id, $userId);
-                $connectionModel->where('user_id', $targetUser->id)->where('connected_to', $userId)->set(['status' => 'accepted'])->update();
+                $reverseId = $connectionModel->connect($targetUser->id, $userId);
+                if ($reverseId) {
+                    $connectionModel->update($reverseId, ['status' => 'accepted']);
+                }
+            } else {
+                $connectionModel->where('user_id', $targetUser->id)
+                    ->where('connected_to', $userId)
+                    ->set(['status' => 'accepted'])->update();
             }
             $connStatus = 'accepted';
-        }
+        } else {
+            // Auto-accept: if the other person already added us
+            $reverseConn = $connectionModel->where('user_id', $targetUser->id)
+                ->where('connected_to', $userId)
+                ->first();
 
-        // Auto-accept: if the other person already added us, accept both
-        $reverseConn = $connectionModel->where('user_id', $targetUser->id)
-            ->where('connected_to', $userId)
-            ->first();
-        
-        $connStatus = 'pending';
-        if ($reverseConn) {
-            $connectionModel->update($connId, ['status' => 'accepted']);
-            $connectionModel->update($reverseConn->id, ['status' => 'accepted']);
-            $connStatus = 'accepted';
+            if ($reverseConn) {
+                $connectionModel->update($connId, ['status' => 'accepted']);
+                $connectionModel->update($reverseConn->id, ['status' => 'accepted']);
+                $connStatus = 'accepted';
+            }
         }
 
         return $this->respondCreated([
             'status'  => 'success',
-            'message' => $connStatus === 'accepted' 
+            'message' => $connStatus === 'accepted'
                 ? 'Connected with ' . $targetUser->name . '!'
                 : 'Connection request sent to ' . $targetUser->name,
             'data'    => [
-                'connection_id' => $connId,
+                'connection_id'     => $connId,
                 'connection_status' => $connStatus,
-                'connected_to'  => [
+                'connected_to'      => [
                     'user_id'   => $targetUser->id,
                     'name'      => $targetUser->name,
                     'user_code' => $targetUser->user_code,

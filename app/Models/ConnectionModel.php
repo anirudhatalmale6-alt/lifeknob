@@ -75,9 +75,15 @@ class ConnectionModel extends Model
 
     public function disconnect(int $userId, int $connectedTo): bool
     {
-        // Delete both directions
+        // Delete the requester's side
         $this->where('user_id', $userId)->where('connected_to', $connectedTo)->delete();
-        $this->where('user_id', $connectedTo)->where('connected_to', $userId)->delete();
+
+        // Mark other side as inactive (not deleted)
+        $otherConn = $this->where('user_id', $connectedTo)->where('connected_to', $userId)->first();
+        if ($otherConn && $otherConn->status !== 'inactive') {
+            $this->update($otherConn->id, ['status' => 'inactive']);
+        }
+
         return true;
     }
 
