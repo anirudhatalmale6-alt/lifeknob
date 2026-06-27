@@ -6,9 +6,7 @@
     <div>
         <h1><?= esc($user->name) ?></h1>
         <p>
-            <span class="badge <?= match($user->role) { 'elder' => 'badge-elder', 'family' => 'badge-family', 'admin' => 'badge-admin', default => 'bg-secondary' } ?>">
-                <?= ucfirst(esc($user->role)) ?>
-            </span>
+            <code><?= esc($user->user_code ?? 'No code') ?></code>
             <span class="ms-2 text-muted">ID #<?= esc($user->id) ?></span>
         </p>
     </div>
@@ -56,16 +54,48 @@
             <div class="card-body">
                 <table class="table table-borderless mb-0" style="font-size: 0.9rem;">
                     <tr>
-                        <td class="text-muted fw-medium" style="width: 40%;"><i class="fas fa-phone me-2"></i>Phone</td>
+                        <td class="text-muted fw-medium" style="width: 40%;"><i class="fas fa-fingerprint me-2"></i>Code</td>
+                        <td><code><?= esc($user->user_code ?? 'None') ?></code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted fw-medium"><i class="fas fa-phone me-2"></i>Phone</td>
                         <td><?= esc($user->phone ?? 'Not set') ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted fw-medium"><i class="fas fa-crown me-2"></i>Plan</td>
+                        <td>
+                            <?php $plan = $user->plan ?? 'free'; ?>
+                            <span class="badge <?= $plan === 'paid' ? 'badge-active' : 'bg-secondary' ?>"><?= ucfirst($plan) ?></span>
+                            <small class="text-muted ms-1">(max <?= esc($user->max_connections ?? 3) ?> conn.)</small>
+                        </td>
                     </tr>
                     <tr>
                         <td class="text-muted fw-medium"><i class="fas fa-user-tag me-2"></i>Role</td>
                         <td><?= ucfirst(esc($user->role)) ?></td>
                     </tr>
                     <tr>
-                        <td class="text-muted fw-medium"><i class="fas fa-globe me-2"></i>Timezone</td>
-                        <td><?= esc($user->timezone ?? 'UTC') ?></td>
+                        <td class="text-muted fw-medium"><i class="fas fa-phone-alt me-2"></i>SOS</td>
+                        <td>
+                            <?php if (!empty($user->sos_number)): ?>
+                                <?= esc($user->sos_name ?? '') ?> - <?= esc($user->sos_number) ?>
+                            <?php else: ?>
+                                <span class="text-muted">Not set</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted fw-medium"><i class="fas fa-ambulance me-2"></i>Ambulance</td>
+                        <td><?= esc($user->ambulance_number ?? 'Not set') ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted fw-medium"><i class="fas fa-mobile-alt me-2"></i>Device</td>
+                        <td>
+                            <?php if (!empty($user->device_id)): ?>
+                                <span title="<?= esc($user->device_id) ?>"><?= esc(mb_strimwidth($user->device_id, 0, 20, '...')) ?></span>
+                            <?php else: ?>
+                                <span class="text-muted">Not set</span>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <tr>
                         <td class="text-muted fw-medium"><i class="fas fa-calendar me-2"></i>Registered</td>
@@ -75,12 +105,6 @@
                         <td class="text-muted fw-medium"><i class="fas fa-clock me-2"></i>Last Seen</td>
                         <td><span data-time="<?= esc($user->last_seen_at ?? '') ?>"></span></td>
                     </tr>
-                    <?php if (!empty($user->firebase_token)): ?>
-                    <tr>
-                        <td class="text-muted fw-medium"><i class="fas fa-mobile-alt me-2"></i>Push</td>
-                        <td><span class="badge badge-active">Enabled</span></td>
-                    </tr>
-                    <?php endif; ?>
                 </table>
             </div>
         </div>
@@ -88,162 +112,104 @@
 
     <!-- Right Column -->
     <div class="col-lg-8">
-        <?php if (($user->role ?? '') === 'elder' && !empty($checkInSettings)): ?>
-        <!-- Check-in Settings -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-cog text-green me-2"></i>Check-in Settings
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center gap-3 p-3 rounded" style="background: #f8f9fa;">
-                            <div class="stat-icon bg-green-light" style="width: 40px; height: 40px; font-size: 0.9rem;">
-                                <i class="fas fa-sync-alt"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold"><?= esc($checkInSettings->frequency_hours ?? 12) ?> hours</div>
-                                <small class="text-muted">Check-in Frequency</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center gap-3 p-3 rounded" style="background: #f8f9fa;">
-                            <div class="stat-icon bg-orange-light" style="width: 40px; height: 40px; font-size: 0.9rem;">
-                                <i class="fas fa-bell"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold"><?= esc($checkInSettings->reminder_minutes ?? 30) ?> min</div>
-                                <small class="text-muted">Reminder Before Alert</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center gap-3 p-3 rounded" style="background: #f8f9fa;">
-                            <div class="stat-icon bg-red-light" style="width: 40px; height: 40px; font-size: 0.9rem;">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold"><?= esc($checkInSettings->alert_delay_minutes ?? 60) ?> min</div>
-                                <small class="text-muted">Alert Delay</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center gap-3 p-3 rounded" style="background: #f8f9fa;">
-                            <div class="stat-icon bg-blue-light" style="width: 40px; height: 40px; font-size: 0.9rem;">
-                                <i class="fas fa-moon"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold"><?= esc($checkInSettings->quiet_hours_start ?? '22:00') ?> - <?= esc($checkInSettings->quiet_hours_end ?? '07:00') ?></div>
-                                <small class="text-muted">Quiet Hours</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <?php if (($user->role ?? '') === 'elder' && !empty($recentCheckIns)): ?>
-        <!-- Recent Check-ins -->
+        <!-- Connections -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-clipboard-check text-green me-2"></i>Recent Check-ins</span>
-                <span class="badge bg-secondary"><?= count($recentCheckIns) ?></span>
+                <span><i class="fas fa-link text-green me-2"></i>Connections</span>
+                <span class="badge bg-secondary"><?= count($connections ?? []) ?></span>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Note</th>
-                                <th>Location</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($recentCheckIns as $ci): ?>
-                                <tr>
-                                    <td>
-                                        <?php
-                                            $ciType = $ci->type ?? 'ok';
-                                            $ciBadge = match($ciType) {
-                                                'ok' => 'badge-ok',
-                                                'help' => 'badge-help',
-                                                'emergency' => 'badge-emergency',
-                                                default => 'bg-secondary',
-                                            };
-                                        ?>
-                                        <span class="badge <?= $ciBadge ?>"><?= ucfirst($ciType) ?></span>
-                                    </td>
-                                    <td><?= esc($ci->note ?? '-') ?></td>
-                                    <td>
-                                        <?php if (!empty($ci->latitude) && !empty($ci->longitude)): ?>
-                                            <a href="https://maps.google.com/?q=<?= esc($ci->latitude) ?>,<?= esc($ci->longitude) ?>"
-                                               target="_blank" class="text-decoration-none" title="Open in Google Maps">
-                                                <i class="fas fa-map-marker-alt text-red me-1"></i>
-                                                <?= number_format((float)$ci->latitude, 4) ?>, <?= number_format((float)$ci->longitude, 4) ?>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-muted">-</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><span data-time="<?= esc($ci->created_at ?? '') ?>"></span></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <?php elseif (($user->role ?? '') === 'elder'): ?>
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-clipboard-check text-green me-2"></i>Recent Check-ins
-            </div>
-            <div class="card-body text-center py-4 text-muted">
-                <i class="fas fa-clipboard fa-2x mb-2" style="opacity: 0.2;"></i>
-                <p class="mb-0">No check-ins recorded yet</p>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Family Groups -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-user-friends text-orange me-2"></i>Family Groups</span>
-                <span class="badge bg-secondary"><?= count($groups ?? []) ?></span>
-            </div>
-            <div class="card-body p-0">
-                <?php if (empty($groups)): ?>
+                <?php if (empty($connections)): ?>
                     <div class="text-center py-4 text-muted">
-                        <i class="fas fa-users fa-2x mb-2" style="opacity: 0.2;"></i>
-                        <p class="mb-0">Not a member of any group</p>
+                        <i class="fas fa-link fa-2x mb-2" style="opacity: 0.2;"></i>
+                        <p class="mb-0">No connections</p>
                     </div>
                 <?php else: ?>
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th>Group Name</th>
-                                    <th>Invite Code</th>
-                                    <th>Joined</th>
-                                    <th>Actions</th>
+                                    <th>Connected To</th>
+                                    <th>Code</th>
+                                    <th>Display Name</th>
+                                    <th>Status</th>
+                                    <th>Their Last Check-in</th>
+                                    <th>Connected</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($groups as $group): ?>
+                                <?php foreach ($connections as $conn): ?>
                                     <tr>
-                                        <td class="fw-medium"><?= esc($group->name) ?></td>
-                                        <td><code><?= esc($group->invite_code ?? '-') ?></code></td>
-                                        <td><span data-date="<?= esc($group->created_at ?? '') ?>"></span></td>
                                         <td>
-                                            <a href="/admin/groups/<?= esc($group->id) ?>" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-eye me-1"></i>View
+                                            <a href="/admin/users/<?= esc($conn->other_id ?? '') ?>" class="text-decoration-none fw-medium">
+                                                <?= esc($conn->other_name ?? 'Unknown') ?>
                                             </a>
                                         </td>
+                                        <td><code><?= esc($conn->other_code ?? '-') ?></code></td>
+                                        <td><?= esc($conn->display_name ?? '-') ?></td>
+                                        <td>
+                                            <?php
+                                                $status = $conn->status ?? 'pending';
+                                                $statusBadge = match($status) {
+                                                    'accepted' => 'badge-active',
+                                                    'pending' => 'badge-help',
+                                                    'rejected' => 'badge-emergency',
+                                                    'inactive' => 'badge-inactive',
+                                                    default => 'bg-secondary',
+                                                };
+                                            ?>
+                                            <span class="badge <?= $statusBadge ?>"><?= ucfirst($status) ?></span>
+                                        </td>
+                                        <td><span data-time="<?= esc($conn->other_last_checkin ?? '') ?>"></span></td>
+                                        <td><span data-time="<?= esc($conn->created_at ?? '') ?>"></span></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Check-in History -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-clipboard-check text-green me-2"></i>Check-in History</span>
+                <span class="badge bg-secondary"><?= count($checkIns ?? []) ?></span>
+            </div>
+            <div class="card-body p-0">
+                <?php if (empty($checkIns)): ?>
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-clipboard fa-2x mb-2" style="opacity: 0.2;"></i>
+                        <p class="mb-0">No check-ins recorded yet</p>
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Note</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($checkIns as $ci): ?>
+                                    <tr>
+                                        <td>
+                                            <?php
+                                                $ciType = $ci->type ?? 'ok';
+                                                $ciBadge = match($ciType) {
+                                                    'ok' => 'badge-ok',
+                                                    'help' => 'badge-help',
+                                                    'emergency' => 'badge-emergency',
+                                                    default => 'bg-secondary',
+                                                };
+                                            ?>
+                                            <span class="badge <?= $ciBadge ?>"><?= ucfirst($ciType) ?></span>
+                                        </td>
+                                        <td><?= esc($ci->note ?? '-') ?></td>
+                                        <td><span data-time="<?= esc($ci->created_at ?? '') ?>"></span></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>

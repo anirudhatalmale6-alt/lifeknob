@@ -5,8 +5,6 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\UserModel;
 use App\Models\CheckInModel;
-use App\Models\CheckInSettingModel;
-use App\Models\FamilyGroupModel;
 
 class UserController extends BaseController
 {
@@ -17,13 +15,13 @@ class UserController extends BaseController
         }
 
         $userModel = new UserModel();
-        $roleFilter = $this->request->getGet('role');
+        $planFilter = $this->request->getGet('plan');
         $search = $this->request->getGet('q');
 
         $builder = $userModel->where('role !=', 'admin');
 
-        if ($roleFilter && in_array($roleFilter, ['elder', 'family'])) {
-            $builder->where('role', $roleFilter);
+        if ($planFilter && in_array($planFilter, ['free', 'paid'])) {
+            $builder->where('plan', $planFilter);
         }
 
         if ($search) {
@@ -31,17 +29,37 @@ class UserController extends BaseController
                 ->like('name', $search)
                 ->orLike('email', $search)
                 ->orLike('phone', $search)
+                ->orLike('user_code', $search)
                 ->groupEnd();
         }
 
         $users = $builder->orderBy('created_at', 'DESC')->paginate(25);
 
+        // Get connection counts and last check-in for each user
+        $db = \Config\Database::connect();
+        foreach ($users as &$user) {
+            $user->connection_count = $db->table('connections')
+                ->groupStart()
+                    ->where('user_id', $user->id)
+                    ->orWhere('connected_to', $user->id)
+                ->groupEnd()
+                ->where('status', 'accepted')
+                ->countAllResults();
+
+            $lastCheckin = $db->table('check_ins')
+                ->where('user_id', $user->id)
+                ->orderBy('created_at', 'DESC')
+                ->limit(1)
+                ->get()->getRow();
+            $user->last_checkin_at = $lastCheckin ? $lastCheckin->created_at : null;
+        }
+
         return view('admin/users/index', [
-            'activeMenu' => 'users',
-            'users'      => $users,
-            'pager'      => $userModel->pager,
-            'roleFilter' => $roleFilter,
-            'search'     => $search,
+            'activeMenu'  => 'users',
+            'users'       => $users,
+            'pager'       => $userModel->pager,
+            'planFilter'  => $planFilter,
+            'search'      => $search,
         ]);
     }
 
@@ -58,26 +76,34 @@ class UserController extends BaseController
             return redirect()->to('/admin/users')->with('error', 'User not found');
         }
 
-        $checkIns = [];
-        $settings = null;
+        $db = \Config\Database::connect();
 
-        if ($user->role === 'elder') {
-            $checkInModel = new CheckInModel();
-            $checkIns = $checkInModel->getCheckInHistory($id, 20);
+        // Get connections for this user
+        $connections = $db->query("
+            SELECT c.*,
+                   CASE WHEN c.user_id = ? THEN u2.id ELSE u1.id END as other_id,
+                   CASE WHEN c.user_id = ? THEN u2.name ELSE u1.name END as other_name,
+                   CASE WHEN c.user_id = ? THEN u2.user_code ELSE u1.user_code END as other_code,
+                   CASE WHEN c.user_id = ? THEN u2.email ELSE u1.email END as other_email,
+                   (SELECT ci.created_at FROM check_ins ci
+                    WHERE ci.user_id = CASE WHEN c.user_id = ? THEN c.connected_to ELSE c.user_id END
+                    ORDER BY ci.created_at DESC LIMIT 1) as other_last_checkin
+            FROM connections c
+            LEFT JOIN users u1 ON u1.id = c.user_id
+            LEFT JOIN users u2 ON u2.id = c.connected_to
+            WHERE c.user_id = ? OR c.connected_to = ?
+            ORDER BY c.created_at DESC
+        ", [$id, $id, $id, $id, $id, $id, $id])->getResult();
 
-            $settingModel = new CheckInSettingModel();
-            $settings = $settingModel->getSettingsForUser($id);
-        }
-
-        $groupModel = new FamilyGroupModel();
-        $groups = $groupModel->getGroupsForUser($id);
+        // Get check-in history (last 20)
+        $checkInModel = new CheckInModel();
+        $checkIns = $checkInModel->getCheckInHistory($id, 20);
 
         return view('admin/users/view', [
-            'activeMenu' => 'users',
-            'user'       => $user,
-            'checkIns'   => $checkIns,
-            'settings'   => $settings,
-            'groups'     => $groups,
+            'activeMenu'  => 'users',
+            'user'        => $user,
+            'connections'  => $connections,
+            'checkIns'    => $checkIns,
         ]);
     }
 

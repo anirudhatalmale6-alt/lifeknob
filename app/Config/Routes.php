@@ -75,8 +75,7 @@ $routes->group('admin', function ($routes) {
     $routes->get('users', 'Admin\UserController::index');
     $routes->get('users/(:num)', 'Admin\UserController::view/$1');
     $routes->post('users/(:num)/toggle', 'Admin\UserController::toggle/$1');
-    $routes->get('groups', 'Admin\GroupController::index');
-    $routes->get('groups/(:num)', 'Admin\GroupController::view/$1');
+    $routes->get('connections', 'Admin\ConnectionController::index');
     $routes->get('alerts', 'Admin\AlertController::index');
     $routes->get('checkins', 'Admin\CheckInController::index');
     $routes->get('settings', 'Admin\SettingsController::index');

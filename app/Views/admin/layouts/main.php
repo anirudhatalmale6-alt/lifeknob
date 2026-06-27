@@ -378,17 +378,17 @@
             </a>
         </li>
         <li class="nav-item">
-            <a href="/admin/groups" class="<?= ($activeMenu ?? '') === 'groups' ? 'active' : '' ?>">
-                <i class="fas fa-user-friends"></i>
-                <span>Family Groups</span>
+            <a href="/admin/connections" class="<?= ($activeMenu ?? '') === 'connections' ? 'active' : '' ?>">
+                <i class="fas fa-link"></i>
+                <span>Connections</span>
             </a>
         </li>
 
         <li class="nav-label">Monitoring</li>
         <li class="nav-item">
-            <a href="/admin/alerts" class="<?= ($activeMenu ?? '') === 'alerts' ? 'active' : '' ?>">
-                <i class="fas fa-bell"></i>
-                <span>Alerts</span>
+            <a href="/admin/alerts" class="<?= ($activeMenu ?? '') === 'overdue' ? 'active' : '' ?>">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Overdue</span>
             </a>
         </li>
         <li class="nav-item">

@@ -3,146 +3,83 @@
 <?= $this->section('content') ?>
 
 <div class="page-header">
-    <h1>Alerts</h1>
-    <p>Monitor and manage all system alerts</p>
+    <h1>Overdue Users</h1>
+    <p>Users with accepted connections who haven't checked in within <?= esc($thresholdDays) ?> day<?= $thresholdDays != 1 ? 's' : '' ?></p>
 </div>
 
-<!-- Filters -->
-<div class="card mb-4">
-    <div class="card-body py-3">
-        <form method="get" action="/admin/alerts" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold text-muted">Type</label>
-                <select class="form-select" name="type">
-                    <option value="">All Types</option>
-                    <option value="missed_checkin" <?= ($type ?? '') === 'missed_checkin' ? 'selected' : '' ?>>Missed Check-in</option>
-                    <option value="help" <?= ($type ?? '') === 'help' ? 'selected' : '' ?>>Help Request</option>
-                    <option value="emergency" <?= ($type ?? '') === 'emergency' ? 'selected' : '' ?>>Emergency</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold text-muted">Status</label>
-                <select class="form-select" name="status">
-                    <option value="">All Statuses</option>
-                    <option value="active" <?= ($status ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
-                    <option value="resolved" <?= ($status ?? '') === 'resolved' ? 'selected' : '' ?>>Resolved</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold text-muted">Search Elder</label>
-                <input type="text" class="form-control" name="search" placeholder="Elder name..."
-                       value="<?= esc($search ?? '') ?>">
-            </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-green flex-grow-1">
-                    <i class="fas fa-filter me-1"></i>Filter
-                </button>
-                <a href="/admin/alerts" class="btn btn-outline-secondary" title="Reset">
-                    <i class="fas fa-undo"></i>
-                </a>
-            </div>
-        </form>
+<!-- Info Banner -->
+<div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+    <i class="fas fa-info-circle me-3 fa-lg"></i>
+    <div>
+        <strong>Threshold: <?= esc($thresholdDays) ?> day<?= $thresholdDays != 1 ? 's' : '' ?></strong> &mdash;
+        Users shown here have at least one accepted connection and their most recent check-in is older than <?= esc($thresholdDays) ?> day<?= $thresholdDays != 1 ? 's' : '' ?>.
+        <a href="/admin/settings" class="alert-link">Change threshold</a>
     </div>
 </div>
 
-<!-- Alerts Table -->
+<!-- Overdue Table -->
 <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-exclamation-triangle text-orange me-2"></i>Overdue Users</span>
+        <span class="badge <?= count($overdueUsers ?? []) > 0 ? 'bg-danger' : 'bg-success' ?>"><?= count($overdueUsers ?? []) ?></span>
+    </div>
     <div class="card-body p-0">
-        <?php if (empty($alerts)): ?>
+        <?php if (empty($overdueUsers)): ?>
             <div class="text-center py-5 text-muted">
                 <i class="fas fa-check-circle fa-3x mb-3 text-green" style="opacity: 0.3;"></i>
-                <p class="mb-0 fw-medium">No alerts found</p>
-                <small>Try adjusting your filters or check back later</small>
+                <p class="mb-0 fw-medium">No overdue users</p>
+                <small>All connected users have checked in within the last <?= esc($thresholdDays) ?> day<?= $thresholdDays != 1 ? 's' : '' ?></small>
             </div>
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Type</th>
-                            <th>Elder</th>
-                            <th>Group</th>
-                            <th>Message</th>
+                            <th>User</th>
+                            <th>Code</th>
+                            <th>Last Check-in</th>
+                            <th>Days Overdue</th>
+                            <th>Connected To</th>
                             <th>Status</th>
-                            <th>Created</th>
-                            <th>Resolved</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($alerts as $alert): ?>
-                            <tr class="<?= empty($alert->is_resolved) ? '' : '' ?>">
-                                <td class="text-muted">#<?= esc($alert->id) ?></td>
+                        <?php foreach ($overdueUsers as $ou): ?>
+                            <tr>
+                                <td>
+                                    <a href="/admin/users/<?= esc($ou->id) ?>" class="text-decoration-none fw-medium">
+                                        <?= esc($ou->name) ?>
+                                    </a>
+                                    <br><small class="text-muted"><?= esc($ou->email) ?></small>
+                                </td>
+                                <td><code><?= esc($ou->user_code ?? '-') ?></code></td>
+                                <td><span data-time="<?= esc($ou->last_checkin_at ?? '') ?>"></span></td>
                                 <td>
                                     <?php
-                                        $type = $alert->type ?? 'unknown';
-                                        $badgeClass = match($type) {
-                                            'emergency' => 'badge-emergency',
-                                            'help' => 'badge-help',
-                                            'missed_checkin' => 'badge-missed',
-                                            default => 'bg-secondary',
-                                        };
-                                        $icon = match($type) {
-                                            'emergency' => 'fa-exclamation-circle',
-                                            'help' => 'fa-hand-paper',
-                                            'missed_checkin' => 'fa-clock',
-                                            default => 'fa-info-circle',
-                                        };
+                                        $days = $ou->days_overdue ?? 0;
+                                        $badgeClass = $days >= 7 ? 'badge-emergency' : ($days >= 3 ? 'badge-help' : 'badge-missed');
                                     ?>
                                     <span class="badge <?= $badgeClass ?>">
-                                        <i class="fas <?= $icon ?> me-1"></i><?= ucfirst(str_replace('_', ' ', $type)) ?>
+                                        <i class="fas fa-clock me-1"></i><?= $days ?> day<?= $days != 1 ? 's' : '' ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <?php if (!empty($alert->elder_id)): ?>
-                                        <a href="/admin/users/<?= esc($alert->elder_id) ?>" class="text-decoration-none fw-medium">
-                                            <?= esc($alert->elder_name ?? 'Unknown') ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <span class="text-muted">Unknown</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if (!empty($alert->group_id)): ?>
-                                        <a href="/admin/groups/<?= esc($alert->group_id) ?>" class="text-decoration-none">
-                                            <?= esc($alert->group_name ?? 'Group #' . $alert->group_id) ?>
-                                        </a>
+                                    <?php if (!empty($ou->connected_to)): ?>
+                                        <?php foreach ($ou->connected_to as $ct): ?>
+                                            <span class="badge bg-light text-dark me-1 mb-1">
+                                                <?= esc($ct->name) ?>
+                                                <small class="text-muted">(<?= esc($ct->code) ?>)</small>
+                                            </span>
+                                        <?php endforeach; ?>
                                     <?php else: ?>
                                         <span class="text-muted">-</span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <?php if (!empty($alert->message)): ?>
-                                        <span title="<?= esc($alert->message) ?>"><?= esc(mb_strimwidth($alert->message, 0, 35, '...')) ?></span>
+                                    <?php if (!empty($ou->is_active)): ?>
+                                        <span class="badge badge-active"><i class="fas fa-circle me-1" style="font-size: 0.5rem; vertical-align: middle;"></i>Active</span>
                                     <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if (!empty($alert->is_resolved)): ?>
-                                        <span class="badge badge-resolved"><i class="fas fa-check me-1"></i>Resolved</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-active">
-                                            <i class="fas fa-circle me-1" style="font-size: 0.4rem; vertical-align: middle; animation: pulse 1.5s infinite;"></i>Active
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><span data-time="<?= esc($alert->created_at ?? '') ?>"></span></td>
-                                <td>
-                                    <?php if (!empty($alert->is_resolved)): ?>
-                                        <div>
-                                            <?php if (!empty($alert->resolved_by_name)): ?>
-                                                <small class="text-muted">by <?= esc($alert->resolved_by_name) ?></small><br>
-                                            <?php endif; ?>
-                                            <span data-time="<?= esc($alert->resolved_at ?? '') ?>"></span>
-                                        </div>
-                                    <?php else: ?>
-                                        <form action="/admin/alerts/<?= esc($alert->id) ?>/resolve" method="post" class="d-inline">
-                                            <?= csrf_field() ?>
-                                            <button type="submit" class="btn btn-sm btn-green" onclick="return confirm('Mark this alert as resolved?')">
-                                                <i class="fas fa-check me-1"></i>Resolve
-                                            </button>
-                                        </form>
+                                        <span class="badge badge-inactive"><i class="fas fa-circle me-1" style="font-size: 0.5rem; vertical-align: middle;"></i>Inactive</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -152,24 +89,6 @@
             </div>
         <?php endif; ?>
     </div>
-
-    <?php if (!empty($pager)): ?>
-        <div class="card-footer bg-white border-top d-flex justify-content-between align-items-center">
-            <small class="text-muted">
-                Showing <?= count($alerts) ?> alert<?= count($alerts) !== 1 ? 's' : '' ?>
-            </small>
-            <?= $pager->links('default', 'default_full') ?>
-        </div>
-    <?php endif; ?>
 </div>
 
-<?= $this->endSection() ?>
-
-<?= $this->section('scripts') ?>
-<style>
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.3; }
-    }
-</style>
 <?= $this->endSection() ?>

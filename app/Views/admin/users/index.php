@@ -13,32 +13,23 @@
 <div class="card mb-4">
     <div class="card-body py-3">
         <form method="get" action="/admin/users" class="row g-2 align-items-end">
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <label class="form-label small fw-semibold text-muted">Search</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
-                    <input type="text" class="form-control" name="search" placeholder="Name, email, or phone..."
+                    <input type="text" class="form-control" name="q" placeholder="Name, email, phone, or user code..."
                            value="<?= esc($search ?? '') ?>">
                 </div>
             </div>
             <div class="col-md-3">
-                <label class="form-label small fw-semibold text-muted">Role</label>
-                <select class="form-select" name="role">
-                    <option value="">All Roles</option>
-                    <option value="elder" <?= ($role ?? '') === 'elder' ? 'selected' : '' ?>>Elder</option>
-                    <option value="family" <?= ($role ?? '') === 'family' ? 'selected' : '' ?>>Family Member</option>
-                    <option value="admin" <?= ($role ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
+                <label class="form-label small fw-semibold text-muted">Plan</label>
+                <select class="form-select" name="plan">
+                    <option value="">All Plans</option>
+                    <option value="free" <?= ($planFilter ?? '') === 'free' ? 'selected' : '' ?>>Free</option>
+                    <option value="paid" <?= ($planFilter ?? '') === 'paid' ? 'selected' : '' ?>>Paid</option>
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold text-muted">Status</label>
-                <select class="form-select" name="status">
-                    <option value="">All Statuses</option>
-                    <option value="active" <?= ($status ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
-                    <option value="inactive" <?= ($status ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
-                </select>
-            </div>
-            <div class="col-md-2 d-flex gap-2">
+            <div class="col-md-4 d-flex gap-2">
                 <button type="submit" class="btn btn-green flex-grow-1">
                     <i class="fas fa-filter me-1"></i>Filter
                 </button>
@@ -66,9 +57,11 @@
                         <tr>
                             <th>ID</th>
                             <th>Name</th>
+                            <th>Code</th>
                             <th>Email</th>
-                            <th>Role</th>
-                            <th>Phone</th>
+                            <th>Plan</th>
+                            <th>Connections</th>
+                            <th>Last Check-in</th>
                             <th>Last Seen</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -79,6 +72,7 @@
                             <tr>
                                 <td class="text-muted">#<?= esc($user->id) ?></td>
                                 <td class="fw-medium"><?= esc($user->name) ?></td>
+                                <td><code><?= esc($user->user_code ?? '-') ?></code></td>
                                 <td>
                                     <a href="mailto:<?= esc($user->email) ?>" class="text-decoration-none text-muted">
                                         <?= esc($user->email) ?>
@@ -86,24 +80,15 @@
                                 </td>
                                 <td>
                                     <?php
-                                        $roleBadge = match($user->role) {
-                                            'elder' => 'badge-elder',
-                                            'family' => 'badge-family',
-                                            'admin' => 'badge-admin',
-                                            default => 'bg-secondary',
-                                        };
-                                        $roleIcon = match($user->role) {
-                                            'elder' => 'fa-user-clock',
-                                            'family' => 'fa-user-friends',
-                                            'admin' => 'fa-user-shield',
-                                            default => 'fa-user',
-                                        };
+                                        $plan = $user->plan ?? 'free';
+                                        $planBadge = $plan === 'paid' ? 'badge-active' : 'bg-secondary';
                                     ?>
-                                    <span class="badge <?= $roleBadge ?>">
-                                        <i class="fas <?= $roleIcon ?> me-1"></i><?= ucfirst(esc($user->role)) ?>
-                                    </span>
+                                    <span class="badge <?= $planBadge ?>"><?= ucfirst($plan) ?></span>
                                 </td>
-                                <td><?= esc($user->phone ?? '-') ?></td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary"><?= $user->connection_count ?? 0 ?></span>
+                                </td>
+                                <td><span data-time="<?= esc($user->last_checkin_at ?? '') ?>"></span></td>
                                 <td><span data-time="<?= esc($user->last_seen_at ?? '') ?>"></span></td>
                                 <td>
                                     <?php if (!empty($user->is_active)): ?>
