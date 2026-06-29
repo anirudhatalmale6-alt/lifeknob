@@ -7,7 +7,12 @@
         <h1><i class="fas fa-edit me-2"></i><?= esc($language['name']) ?> Translations</h1>
         <p>Edit translations for <strong><?= esc($language['name']) ?></strong> (<?= esc($language['code']) ?>)</p>
     </div>
-    <a href="/admin/languages" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
+    <div class="d-flex gap-2">
+        <a href="/admin/languages/export/<?= esc($language['code']) ?>" class="btn btn-outline-primary">
+            <i class="fas fa-download me-1"></i>Export CSV
+        </a>
+        <a href="/admin/languages" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
+    </div>
 </div>
 
 <form action="/admin/languages/save/<?= esc($language['code']) ?>" method="post">
@@ -74,6 +79,21 @@
             </div>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-green w-100"><i class="fas fa-plus me-1"></i>Add Key</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><i class="fas fa-upload me-2"></i>Import CSV</div>
+    <div class="card-body">
+        <p class="text-muted small mb-2">Upload a CSV file with columns: key, english, <?= esc($language['name']) ?>. Download the template first using Export CSV above.</p>
+        <form action="/admin/languages/import/<?= esc($language['code']) ?>" method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <input type="file" name="csv_file" class="form-control" accept=".csv,.txt" required>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-green w-100"><i class="fas fa-upload me-1"></i>Import</button>
             </div>
         </form>
     </div>

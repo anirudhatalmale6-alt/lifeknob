@@ -193,4 +193,109 @@ class LanguageController extends BaseController
 
         return redirect()->to("/admin/languages/edit/{$returnTo}")->with('success', "Key '{$key}' added");
     }
+
+    public function exportCsv($code = null)
+    {
+        if (!session()->get('is_admin')) return redirect()->to('/admin/login');
+        if (!$code) return redirect()->to('/admin/languages');
+
+        $language = $this->db->table('languages')->where('code', $code)->get()->getRowArray();
+        if (!$language) return redirect()->to('/admin/languages');
+
+        $enStrings = $this->db->table('translations')
+            ->where('lang_code', 'en')
+            ->orderBy('string_key')
+            ->get()->getResultArray();
+
+        $langStrings = [];
+        if ($code !== 'en') {
+            $rows = $this->db->table('translations')
+                ->where('lang_code', $code)
+                ->get()->getResultArray();
+            foreach ($rows as $r) {
+                $langStrings[$r['string_key']] = $r['string_value'];
+            }
+        }
+
+        $filename = "lifeknob_translations_{$code}.csv";
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header("Content-Disposition: attachment; filename=\"{$filename}\"");
+
+        $output = fopen('php://output', 'w');
+        fwrite($output, "\xEF\xBB\xBF");
+        fputcsv($output, ['key', 'english', $language['name']]);
+
+        foreach ($enStrings as $s) {
+            $translation = ($code === 'en') ? $s['string_value'] : ($langStrings[$s['string_key']] ?? '');
+            fputcsv($output, [$s['string_key'], $s['string_value'], $translation]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    public function importCsv($code = null)
+    {
+        if (!session()->get('is_admin')) return redirect()->to('/admin/login');
+        if (!$code) return redirect()->to('/admin/languages');
+
+        $file = $this->request->getFile('csv_file');
+        if (!$file || !$file->isValid()) {
+            return redirect()->back()->with('error', 'Please upload a valid CSV file');
+        }
+
+        $ext = strtolower($file->getExtension());
+        if (!in_array($ext, ['csv', 'txt'])) {
+            return redirect()->back()->with('error', 'Only CSV/TXT files are accepted');
+        }
+
+        $content = file_get_contents($file->getTempName());
+        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+        $lines = str_getcsv($content, "\n");
+
+        $saved = 0;
+        $skipped = 0;
+        $headerSkipped = false;
+
+        foreach ($lines as $line) {
+            $cols = str_getcsv($line);
+            if (count($cols) < 3) continue;
+
+            if (!$headerSkipped && strtolower(trim($cols[0])) === 'key') {
+                $headerSkipped = true;
+                continue;
+            }
+            $headerSkipped = true;
+
+            $key = trim($cols[0]);
+            $translation = trim($cols[2]);
+
+            if (empty($key) || empty($translation)) {
+                $skipped++;
+                continue;
+            }
+
+            $existing = $this->db->table('translations')
+                ->where('lang_code', $code)
+                ->where('string_key', $key)
+                ->get()->getRow();
+
+            if ($existing) {
+                $this->db->table('translations')
+                    ->where('id', $existing->id)
+                    ->update(['string_value' => $translation]);
+            } else {
+                $this->db->table('translations')->insert([
+                    'lang_code' => $code,
+                    'string_key' => $key,
+                    'string_value' => $translation,
+                ]);
+            }
+            $saved++;
+        }
+
+        return redirect()->to("/admin/languages/edit/{$code}")
+            ->with('success', "Imported {$saved} translations" . ($skipped > 0 ? " ({$skipped} skipped)" : ''));
+    }
 }
