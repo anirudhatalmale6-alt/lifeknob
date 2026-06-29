@@ -55,6 +55,10 @@ $routes->group('api', function ($routes) {
     $routes->get('profile', 'Api\SettingsController::getProfile');
     $routes->post('profile', 'Api\SettingsController::updateProfile');
     $routes->post('profile/avatar', 'Api\SettingsController::uploadAvatar');
+
+    // Translations (public, no auth needed)
+    $routes->get('languages', 'Api\SettingsController::languages');
+    $routes->get('translations/(:segment)', 'Api\SettingsController::translations/$1');
 });
 
 // Web check-in (for users without phones)
@@ -80,4 +84,11 @@ $routes->group('admin', function ($routes) {
     $routes->get('checkins', 'Admin\CheckInController::index');
     $routes->get('settings', 'Admin\SettingsController::index');
     $routes->post('settings', 'Admin\SettingsController::save');
+
+    $routes->get('languages', 'Admin\LanguageController::index');
+    $routes->get('languages/edit/(:segment)', 'Admin\LanguageController::edit/$1');
+    $routes->post('languages/save/(:segment)', 'Admin\LanguageController::save/$1');
+    $routes->post('languages/add', 'Admin\LanguageController::addLanguage');
+    $routes->post('languages/toggle/(:segment)', 'Admin\LanguageController::toggleLanguage/$1');
+    $routes->post('languages/add-key', 'Admin\LanguageController::addKey');
 });

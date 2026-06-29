@@ -223,4 +223,67 @@ class SettingsController extends ApiBaseController
             "data" => $settings,
         ]);
     }
+
+    public function languages()
+    {
+        $db = db_connect();
+        $languages = $db->table('languages')
+            ->where('is_active', 1)
+            ->orderBy('sort_order')
+            ->get()->getResultArray();
+
+        $result = [];
+        foreach ($languages as $lang) {
+            $result[] = [
+                'code' => $lang['code'],
+                'name' => $lang['name'],
+            ];
+        }
+
+        return $this->respond([
+            'status' => 'success',
+            'data' => $result,
+        ]);
+    }
+
+    public function translations($langCode = 'en')
+    {
+        $db = db_connect();
+
+        $lang = $db->table('languages')
+            ->where('code', $langCode)
+            ->where('is_active', 1)
+            ->get()->getRow();
+
+        if (!$lang) {
+            return $this->failNotFound('Language not found');
+        }
+
+        $rows = $db->table('translations')
+            ->where('lang_code', $langCode)
+            ->get()->getResultArray();
+
+        $strings = [];
+        foreach ($rows as $row) {
+            $strings[$row['string_key']] = $row['string_value'];
+        }
+
+        if ($langCode !== 'en') {
+            $enRows = $db->table('translations')
+                ->where('lang_code', 'en')
+                ->get()->getResultArray();
+            foreach ($enRows as $row) {
+                if (!isset($strings[$row['string_key']])) {
+                    $strings[$row['string_key']] = $row['string_value'];
+                }
+            }
+        }
+
+        return $this->respond([
+            'status' => 'success',
+            'lang_code' => $langCode,
+            'lang_name' => $lang->name,
+            'data' => $strings,
+        ]);
+    }
 }

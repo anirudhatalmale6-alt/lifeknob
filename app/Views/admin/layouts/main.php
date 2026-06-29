@@ -400,6 +400,12 @@
 
         <li class="nav-label">System</li>
         <li class="nav-item">
+            <a href="/admin/languages" class="<?= ($activeMenu ?? '') === 'languages' ? 'active' : '' ?>">
+                <i class="fas fa-language"></i>
+                <span>Languages</span>
+            </a>
+        </li>
+        <li class="nav-item">
             <a href="/admin/settings" class="<?= ($activeMenu ?? '') === 'settings' ? 'active' : '' ?>">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
