@@ -25,6 +25,10 @@ class SettingsController extends BaseController
             'alert_email_enabled'         => $siteSettings['alert_email_enabled'] ?? '1',
             'firebase_configured'         => file_exists(WRITEPATH . 'firebase/service-account.json'),
             'cron_token'                  => getenv('CRON_TOKEN') ?: 'lifeknob2026cronkey',
+            'ads_enabled'                 => $siteSettings['ads_enabled'] ?? '1',
+            'adsense_banner_code'         => $siteSettings['adsense_banner_code'] ?? '',
+            'adsense_bumper_code'         => $siteSettings['adsense_bumper_code'] ?? '',
+            'bumper_delay_seconds'        => $siteSettings['bumper_delay_seconds'] ?? '30',
         ];
 
         return view('admin/settings/index', [
@@ -40,9 +44,10 @@ class SettingsController extends BaseController
         }
 
         $db = db_connect();
-        $fields = ['alert_threshold_days', 'reminder_enabled', 'alert_email_enabled'];
-        
-        foreach ($fields as $key) {
+        $textFields = ['alert_threshold_days', 'adsense_banner_code', 'adsense_bumper_code', 'bumper_delay_seconds'];
+        $checkboxFields = ['reminder_enabled', 'alert_email_enabled', 'ads_enabled'];
+
+        foreach ($textFields as $key) {
             $value = $this->request->getPost($key);
             if ($value !== null) {
                 $db->table('site_settings')->replace([
@@ -50,6 +55,13 @@ class SettingsController extends BaseController
                     'setting_value' => $value,
                 ]);
             }
+        }
+        foreach ($checkboxFields as $key) {
+            $value = $this->request->getPost($key) ? '1' : '0';
+            $db->table('site_settings')->replace([
+                'setting_key' => $key,
+                'setting_value' => $value,
+            ]);
         }
 
         return redirect()->to('/admin/settings')->with('success', 'Settings saved');

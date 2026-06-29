@@ -69,6 +69,35 @@
         </div>
     </div>
 
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Advertising (AdSense)</h6></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="ads_enabled" value="1" <?= ($settings['ads_enabled'] ?? '1') == '1' ? 'checked' : '' ?>>
+                        <label class="form-check-label">Enable ads for free users</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Banner Ad Code</label>
+                    <textarea name="adsense_banner_code" class="form-control" rows="4" placeholder="Paste AdSense banner code here..."><?= esc($settings['adsense_banner_code'] ?? '') ?></textarea>
+                    <small class="text-muted">Shows on Home, People, and Setup pages (320x50 banners)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bumper Ad Code</label>
+                    <textarea name="adsense_bumper_code" class="form-control" rows="4" placeholder="Paste interstitial/bumper ad code here..."><?= esc($settings['adsense_bumper_code'] ?? '') ?></textarea>
+                    <small class="text-muted">6-second full-screen ad after knob turn, settings save, or time on People page</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bumper trigger delay on People page (seconds)</label>
+                    <input type="number" name="bumper_delay_seconds" class="form-control" value="<?= esc($settings['bumper_delay_seconds'] ?? '30') ?>" min="10" max="300">
+                    <small class="text-muted">Show bumper ad after user spends this many seconds on People page</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="col-12">
         <button type="submit" class="btn btn-primary">Save Settings</button>
     </div>

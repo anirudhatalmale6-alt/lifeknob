@@ -14,7 +14,6 @@ class DashboardController extends BaseController
 
         $db = \Config\Database::connect();
 
-        // Core stats
         $totalUsers = $db->table('users')
             ->where('role !=', 'admin')
             ->where('deleted_at IS NULL')
@@ -28,15 +27,12 @@ class DashboardController extends BaseController
             ->where('created_at >=', date('Y-m-d 00:00:00'))
             ->countAllResults();
 
-        // Overdue users: accepted connections where the connected user's last check-in
-        // is older than alert_threshold_days
         $thresholdRow = $db->table('site_settings')
             ->where('setting_key', 'alert_threshold_days')
             ->get()->getRow();
         $thresholdDays = $thresholdRow ? (int)$thresholdRow->setting_value : 2;
         $cutoff = date('Y-m-d H:i:s', strtotime("-{$thresholdDays} days"));
 
-        // Find users who are connected (accepted) and whose last check-in is older than threshold
         $overdueUsers = $db->query("
             SELECT DISTINCT u.id
             FROM users u
@@ -44,9 +40,7 @@ class DashboardController extends BaseController
             WHERE c.status = 'accepted'
               AND u.role != 'admin'
               AND u.deleted_at IS NULL
-              AND (
-                u.id NOT IN (SELECT user_id FROM check_ins WHERE created_at >= ?)
-              )
+              AND u.id NOT IN (SELECT user_id FROM check_ins WHERE created_at >= ?)
               AND u.id IN (SELECT user_id FROM check_ins)
         ", [$cutoff])->getResultArray();
         $overdueCount = count($overdueUsers);
@@ -58,7 +52,42 @@ class DashboardController extends BaseController
             'overdue_users'      => $overdueCount,
         ];
 
-        // Recent check-ins (last 10 with user names)
+        // Check-in activity last 7 days
+        $chartData = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime("-{$i} days"));
+            $count = $db->table('check_ins')
+                ->where('created_at >=', $date . ' 00:00:00')
+                ->where('created_at <=', $date . ' 23:59:59')
+                ->countAllResults();
+            $chartData[] = ['date' => date('D', strtotime($date)), 'count' => $count];
+        }
+
+        // Plan distribution
+        $freePlan = $db->table('users')->where('role !=', 'admin')->where('deleted_at IS NULL')
+            ->where('plan', 'free')->countAllResults();
+        $paidPlan = $db->table('users')->where('role !=', 'admin')->where('deleted_at IS NULL')
+            ->where('plan', 'paid')->countAllResults();
+
+        // Connection status breakdown
+        $connPending = $db->table('connections')->where('status', 'pending')->countAllResults();
+        $connAccepted = $db->table('connections')->where('status', 'accepted')->countAllResults();
+        $connInactive = $db->table('connections')->where('status', 'inactive')->countAllResults();
+
+        // New users last 7 days
+        $newUsersData = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime("-{$i} days"));
+            $count = $db->table('users')
+                ->where('role !=', 'admin')
+                ->where('deleted_at IS NULL')
+                ->where('created_at >=', $date . ' 00:00:00')
+                ->where('created_at <=', $date . ' 23:59:59')
+                ->countAllResults();
+            $newUsersData[] = $count;
+        }
+
+        // Recent check-ins
         $recentCheckIns = $db->query("
             SELECT ci.*, u.name as user_name, u.user_code
             FROM check_ins ci
@@ -67,7 +96,7 @@ class DashboardController extends BaseController
             LIMIT 10
         ")->getResult();
 
-        // Recent connections (last 10)
+        // Recent connections
         $recentConnections = $db->query("
             SELECT c.*,
                    u1.name as user_name, u1.user_code as user_code,
@@ -82,6 +111,10 @@ class DashboardController extends BaseController
         return view('admin/dashboard/index', [
             'activeMenu'        => 'dashboard',
             'stats'             => $stats,
+            'chartData'         => $chartData,
+            'newUsersData'      => $newUsersData,
+            'planData'          => ['free' => $freePlan, 'paid' => $paidPlan],
+            'connStatusData'    => ['pending' => $connPending, 'accepted' => $connAccepted, 'inactive' => $connInactive],
             'recentCheckIns'    => $recentCheckIns,
             'recentConnections' => $recentConnections,
         ]);
