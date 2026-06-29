@@ -12,7 +12,7 @@
     </div>
 <?php endif; ?>
 
-<form method="post" action="/admin/settings/save">
+<form method="post" action="/admin/settings/save" enctype="multipart/form-data">
 <div class="row g-4">
     <div class="col-md-6">
         <div class="card">
@@ -69,30 +69,113 @@
         </div>
     </div>
 
-    <div class="col-md-6">
+    <!-- Advertising -->
+    <div class="col-12">
         <div class="card">
-            <div class="card-header"><h6 class="mb-0">Advertising (AdSense)</h6></div>
+            <div class="card-header">
+                <h6 class="mb-0">Advertising</h6>
+            </div>
             <div class="card-body">
-                <div class="mb-3">
+                <div class="mb-4">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" name="ads_enabled" value="1" <?= ($settings['ads_enabled'] ?? '1') == '1' ? 'checked' : '' ?>>
-                        <label class="form-check-label">Enable ads for free users</label>
+                        <label class="form-check-label fw-bold">Enable ads for free users</label>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Banner Ad Code</label>
-                    <textarea name="adsense_banner_code" class="form-control" rows="4" placeholder="Paste AdSense banner code here..."><?= esc($settings['adsense_banner_code'] ?? '') ?></textarea>
-                    <small class="text-muted">Shows on Home, People, and Setup pages (320x50 banners)</small>
+
+                <div class="row">
+                    <!-- Banner Ads -->
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 mb-3">
+                            <h6 class="text-primary mb-3">Banner Ads <small class="text-muted fw-normal">(Home, People, Setup pages)</small></h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Option 1: Paste Ad Code</label>
+                                <textarea name="adsense_banner_code" class="form-control" rows="3" placeholder="Paste AdSense or other ad network code here..."><?= esc($settings['adsense_banner_code'] ?? '') ?></textarea>
+                                <small class="text-muted">If ad code is provided, it takes priority over custom image</small>
+                            </div>
+
+                            <hr>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Option 2: Upload Your Banner</label>
+                                <small class="text-muted d-block mb-2">Use your own ad image with a click-through URL (e.g. promote resesnews)</small>
+
+                                <?php if (!empty($settings['banner_ad_image'])): ?>
+                                    <div class="mb-2">
+                                        <img src="<?= esc($settings['banner_ad_image']) ?>" class="img-fluid rounded border" style="max-height: 80px;">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" name="remove_banner_image" value="1">
+                                            <label class="form-check-label text-danger small">Remove current image</label>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <input type="file" name="banner_ad_file" class="form-control mb-2" accept=".png,.jpg,.jpeg,.gif,.webp">
+                                <small class="text-muted">Recommended: 320x100 (3.2:1 ratio), PNG/JPG/GIF/WebP</small>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label">Click URL</label>
+                                <input type="url" name="banner_ad_url" class="form-control" value="<?= esc($settings['banner_ad_url'] ?? '') ?>" placeholder="https://resesnews.com">
+                                <small class="text-muted">Where to go when user taps the banner</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bumper Ads -->
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 mb-3">
+                            <h6 class="text-primary mb-3">Bumper Ads <small class="text-muted fw-normal">(6-sec full-screen after actions)</small></h6>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Option 1: Paste Ad Code</label>
+                                <textarea name="adsense_bumper_code" class="form-control" rows="3" placeholder="Paste interstitial ad code here..."><?= esc($settings['adsense_bumper_code'] ?? '') ?></textarea>
+                                <small class="text-muted">If ad code is provided, it takes priority over custom image</small>
+                            </div>
+
+                            <hr>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Option 2: Upload Your Banner</label>
+                                <small class="text-muted d-block mb-2">Full-screen ad image with click-through URL</small>
+
+                                <?php if (!empty($settings['bumper_ad_image'])): ?>
+                                    <div class="mb-2">
+                                        <img src="<?= esc($settings['bumper_ad_image']) ?>" class="img-fluid rounded border" style="max-height: 120px;">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" name="remove_bumper_image" value="1">
+                                            <label class="form-check-label text-danger small">Remove current image</label>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <input type="file" name="bumper_ad_file" class="form-control mb-2" accept=".png,.jpg,.jpeg,.gif,.webp">
+                                <small class="text-muted">Recommended: 500x300 or similar, PNG/JPG/GIF/WebP</small>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label">Click URL</label>
+                                <input type="url" name="bumper_ad_url" class="form-control" value="<?= esc($settings['bumper_ad_url'] ?? '') ?>" placeholder="https://resesnews.com">
+                                <small class="text-muted">Where to go when user taps the bumper ad</small>
+                            </div>
+
+                            <hr>
+
+                            <div class="mb-2">
+                                <label class="form-label">Trigger delay on People page (seconds)</label>
+                                <input type="number" name="bumper_delay_seconds" class="form-control" value="<?= esc($settings['bumper_delay_seconds'] ?? '30') ?>" min="10" max="300">
+                                <small class="text-muted">Show bumper after this many seconds on People page</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Bumper Ad Code</label>
-                    <textarea name="adsense_bumper_code" class="form-control" rows="4" placeholder="Paste interstitial/bumper ad code here..."><?= esc($settings['adsense_bumper_code'] ?? '') ?></textarea>
-                    <small class="text-muted">6-second full-screen ad after knob turn, settings save, or time on People page</small>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Bumper trigger delay on People page (seconds)</label>
-                    <input type="number" name="bumper_delay_seconds" class="form-control" value="<?= esc($settings['bumper_delay_seconds'] ?? '30') ?>" min="10" max="300">
-                    <small class="text-muted">Show bumper ad after user spends this many seconds on People page</small>
+
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <strong>How it works:</strong> Bumper ads trigger after knob turn success, after saving settings, or after spending time on the People page.
+                        If ad code is provided, it is used. Otherwise, the uploaded image + URL is shown. If neither is set, a placeholder is displayed.
+                    </small>
                 </div>
             </div>
         </div>
