@@ -286,4 +286,34 @@ class SettingsController extends ApiBaseController
             'data' => $strings,
         ]);
     }
+
+    public function legalPage($type = null, $langCode = 'en')
+    {
+        $db = db_connect();
+
+        $page = $db->table('legal_pages')
+            ->where('page_type', $type)
+            ->where('lang_code', $langCode)
+            ->get()->getRowArray();
+
+        if (!$page) {
+            $page = $db->table('legal_pages')
+                ->where('page_type', $type)
+                ->where('lang_code', 'en')
+                ->get()->getRowArray();
+        }
+
+        if (!$page) {
+            return $this->failNotFound('Page not found');
+        }
+
+        return $this->respond([
+            'status' => 'success',
+            'data' => [
+                'title' => $page['title'],
+                'content' => $page['content'],
+                'lang_code' => $page['lang_code'],
+            ],
+        ]);
+    }
 }
