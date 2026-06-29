@@ -60,6 +60,7 @@ $routes->group('api', function ($routes) {
     $routes->get('languages', 'Api\SettingsController::languages');
     $routes->get('translations/(:segment)', 'Api\SettingsController::translations/$1');
     $routes->get('legal/(:segment)/(:segment)', 'Api\SettingsController::legalPage/$1/$2');
+    $routes->get('logos', 'Api\SettingsController::logos');
 });
 
 // Web check-in (for users without phones)
@@ -95,6 +96,10 @@ $routes->group('admin', function ($routes) {
     $routes->post('languages/add-key', 'Admin\LanguageController::addKey');
     $routes->get('languages/export/(:segment)', 'Admin\LanguageController::exportCsv/$1');
     $routes->post('languages/import/(:segment)', 'Admin\LanguageController::importCsv/$1');
+
+    $routes->get('logos', 'Admin\LogoController::index');
+    $routes->post('logos/upload/(:segment)', 'Admin\LogoController::upload/$1');
+    $routes->post('logos/delete/(:segment)', 'Admin\LogoController::delete/$1');
 
     $routes->get('legal', 'Admin\LegalController::index');
     $routes->get('legal/edit/(:segment)/(:segment)', 'Admin\LegalController::edit/$1/$2');

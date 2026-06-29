@@ -287,6 +287,19 @@ class SettingsController extends ApiBaseController
         ]);
     }
 
+    public function logos()
+    {
+        $db = db_connect();
+        $rows = $db->table('app_logos')->get()->getResultArray();
+        $result = [];
+        foreach ($rows as $r) {
+            if ($r['file_path']) {
+                $result[$r['logo_key']] = $r['file_path'];
+            }
+        }
+        return $this->respond(['status' => 'success', 'data' => $result]);
+    }
+
     public function legalPage($type = null, $langCode = 'en')
     {
         $db = db_connect();
