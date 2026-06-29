@@ -4,8 +4,18 @@
 
 <div class="page-header">
     <h1><i class="fas fa-image me-2"></i>Logo Management</h1>
-    <p>Upload and manage app logos (SVG, PNG, JPG, WebP - max 2MB)</p>
+    <p>Upload and manage app logos (SVG, PNG, JPG, WebP - max 2MB). Logos are shown as-is (original colors).</p>
 </div>
+
+<?php
+$sizeGuide = [
+    'registration' => 'Best: 400x400px or 1:1 ratio. PNG/SVG with transparent background. Shown large on navy background.',
+    'header' => 'Best: 200x50px or 4:1 ratio. PNG/SVG with transparent background. Shown small at top of pages.',
+    'knob' => 'Best: 200x200px or 1:1 ratio. PNG/SVG with transparent background. Shown on the knob face.',
+    'website' => 'Best: 300x80px or 4:1 ratio. PNG/SVG. Used on the landing page.',
+    'favicon' => 'Best: 32x32px or 64x64px, 1:1 square. PNG or ICO. Browser tab icon.',
+];
+?>
 
 <div class="row g-4">
     <?php foreach ($logos as $logo): ?>
@@ -33,10 +43,11 @@
                     </div>
                 <?php endif; ?>
 
-                <hr>
+                <p class="small text-muted mt-2 mb-2"><i class="fas fa-info-circle me-1"></i><?= $sizeGuide[$logo['logo_key']] ?? '' ?></p>
+
                 <form action="/admin/logos/upload/<?= esc($logo['logo_key']) ?>" method="post" enctype="multipart/form-data">
                     <div class="input-group">
-                        <input type="file" name="logo_file" class="form-control form-control-sm" accept=".svg,.png,.jpg,.jpeg,.webp" required>
+                        <input type="file" name="logo_file" class="form-control form-control-sm" accept=".svg,.png,.jpg,.jpeg,.webp,.ico" required>
                         <button type="submit" class="btn btn-sm btn-green">
                             <i class="fas fa-upload"></i>
                         </button>

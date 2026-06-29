@@ -1,10 +1,7 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Skip /uploads/ directory
-    RewriteRule ^uploads(/.*)?$ - [L]
-
-    # Forward everything else to public/
+    # Forward everything to public/
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

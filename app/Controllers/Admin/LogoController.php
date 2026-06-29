@@ -39,8 +39,8 @@ class LogoController extends BaseController
         }
 
         $ext = strtolower($file->getExtension());
-        if (!in_array($ext, ['svg', 'png', 'jpg', 'jpeg', 'webp'])) {
-            return redirect()->back()->with('error', 'Only SVG, PNG, JPG, WebP files are accepted');
+        if (!in_array($ext, ['svg', 'png', 'jpg', 'jpeg', 'webp', 'ico'])) {
+            return redirect()->back()->with('error', 'Only SVG, PNG, JPG, WebP, ICO files are accepted');
         }
 
         if ($file->getSize() > 2 * 1024 * 1024) {
