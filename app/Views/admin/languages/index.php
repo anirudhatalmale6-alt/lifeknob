@@ -56,10 +56,13 @@
                         <?php foreach ($languages as $lang): ?>
                         <tr>
                             <td>
-                                <strong><?= esc($lang['name']) ?></strong>
+                                <strong id="langName_<?= esc($lang['code']) ?>"><?= esc($lang['name']) ?></strong>
                                 <?php if ($lang['is_default']): ?>
                                     <span class="badge bg-primary ms-1">Default</span>
                                 <?php endif; ?>
+                                <button type="button" class="btn btn-sm btn-link p-0 ms-1" onclick="renameLang('<?= esc($lang['code']) ?>', '<?= esc($lang['name']) ?>')" title="Rename">
+                                    <i class="fas fa-pencil-alt small text-muted"></i>
+                                </button>
                             </td>
                             <td><code><?= esc($lang['code']) ?></code></td>
                             <td><?= $lang['translation_count'] ?> / <?= $totalKeys ?></td>
@@ -123,4 +126,36 @@
     </div>
 </div>
 
+<!-- Rename modal -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" id="renameForm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rename Language</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Language Name</label>
+                    <input type="text" name="name" id="renameInput" class="form-control" maxlength="50" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-green">Save</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+function renameLang(code, currentName) {
+    document.getElementById('renameInput').value = currentName;
+    document.getElementById('renameForm').action = '/admin/languages/rename/' + code;
+    new bootstrap.Modal(document.getElementById('renameModal')).show();
+}
+</script>
 <?= $this->endSection() ?>

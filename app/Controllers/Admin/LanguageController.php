@@ -162,6 +162,23 @@ class LanguageController extends BaseController
         return redirect()->to('/admin/languages')->with('success', 'Language status updated');
     }
 
+    public function renameLanguage($code = null)
+    {
+        if (!session()->get('is_admin')) return redirect()->to('/admin/login');
+        if (!$code) return redirect()->to('/admin/languages');
+
+        $name = trim($this->request->getPost('name'));
+        if (empty($name)) {
+            return redirect()->back()->with('error', 'Name is required');
+        }
+
+        $this->db->table('languages')
+            ->where('code', $code)
+            ->update(['name' => $name]);
+
+        return redirect()->to('/admin/languages')->with('success', "Language renamed to '{$name}'");
+    }
+
     public function addKey()
     {
         if (!session()->get('is_admin')) return redirect()->to('/admin/login');

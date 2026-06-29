@@ -91,6 +91,7 @@ $routes->group('admin', function ($routes) {
     $routes->post('languages/save/(:segment)', 'Admin\LanguageController::save/$1');
     $routes->post('languages/add', 'Admin\LanguageController::addLanguage');
     $routes->post('languages/toggle/(:segment)', 'Admin\LanguageController::toggleLanguage/$1');
+    $routes->post('languages/rename/(:segment)', 'Admin\LanguageController::renameLanguage/$1');
     $routes->post('languages/add-key', 'Admin\LanguageController::addKey');
     $routes->get('languages/export/(:segment)', 'Admin\LanguageController::exportCsv/$1');
     $routes->post('languages/import/(:segment)', 'Admin\LanguageController::importCsv/$1');

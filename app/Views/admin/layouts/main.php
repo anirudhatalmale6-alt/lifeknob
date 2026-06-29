@@ -408,7 +408,7 @@
         <li class="nav-item">
             <a href="/admin/legal" class="<?= ($activeMenu ?? '') === 'legal' ? 'active' : '' ?>">
                 <i class="fas fa-file-contract"></i>
-                <span>Legal Pages</span>
+                <span>T&amp;C / Legal</span>
             </a>
         </li>
         <li class="nav-item">
